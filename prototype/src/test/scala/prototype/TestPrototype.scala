@@ -8,23 +8,30 @@ import org.scalacheck.Prop._
 import prototype.Prototype._
 
 class TestPrototype extends FunSuite with Checkers {
-  
-  test("only two matrices") {
-    val p = Array(30, 35, 15)
-    val result = memMatrix(p)
-    expect(15750) {result._1}
-    expect(Product(Literal(1), Literal(2))) {result._2}
+
+  test("base case") {
+    val p = Array(Literal((30, 35), 1.0f))
+    val result = optimizeProductChain(p)
+    expect(Literal((30, 35), 1.0f)) {result}
   }  
   
+  test("only two matrices") {
+    val p = Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
+    val result = optimizeProductChain(p)
+    expect(Product(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))) {result}
+  }
+  
   test("basic test of dynamic programming optimization of a matrix multiplication chain") {
-    val p = Array(30, 35, 15, 5, 10, 20, 25)
-    val result =  memMatrix(p)
-    expect(15125) {result._1}
+    val p = Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
+        Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
+        Literal((20, 25), 1.0f))
+    val result =  optimizeProductChain(p)
+
     // ((A1(A2 A3))((A4 A5) A6)
-    expect( Product( Product( Literal(1),  Product( Literal(2), Literal(3))),
-         Product( Product( Literal(4), Literal(5)), Literal(6))
+    expect( Product( Product( Literal((30, 35), 1.0f), Product( Literal((35, 15), 1.0f), Literal((15, 5), 1.0f))),
+         Product( Product( Literal((5, 10), 1.0f), Literal((10, 20), 1.0f)), Literal((20, 25), 1.0f))
         )
-        ) {result._2}
+        ) {result}
   }
 
 /*  test("scalacheck") {

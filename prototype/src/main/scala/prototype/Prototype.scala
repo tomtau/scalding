@@ -6,25 +6,31 @@ object Prototype {
   sealed trait MatrixFormula
   case class Product(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
   case class Sum(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
-  case class Literal(id: Int) extends MatrixFormula
+  case class Literal(dimensions: (Int, Int), sparsity: Float) extends MatrixFormula
 
-  /**
-   * p - array with dimensions of the chain of matrices
-   * p_{i − 1} × p_{i} is multiplied by p_{i} × p_{i + 1}
-   */
-  def memMatrix(p: Array[Int]): (Int, MatrixFormula) = {
-    // costs array for each subchain
-    val m = HashMap.empty[(Int,Int), Int]
-    // split marker array
+  def optimizeProductChain(p: Array[Literal]): MatrixFormula = {
+    // costs for each subchain
+    val m = HashMap.empty[(Int,Int), Float]
+    // split markers
     val s = HashMap.empty[(Int,Int), Int]
 
-    def memMatrixChain(p: Array[Int], i: Int, j: Int): Int = {
+    def max(one: Float, two: Float, three: Float): Float = {
+      if (one > two) {
+        if (one > three) one else three
+      } else {
+        if (two > three) two else three
+      }
+    }
+
+    def computeCosts(p: Array[Literal], i: Int, j: Int): Float = {
       if (m.contains((i,j))) m((i,j))
       if (i == j) m.put((i,j), 0)
       else {
         m.put((i,j), Int.MaxValue)
         for (k <- i to (j - 1)) {
-          val cost = memMatrixChain(p, i, k) + memMatrixChain(p, k + 1, j) + p(i-1)*p(k)*p(j)
+          val cost = computeCosts(p, i, k) + computeCosts(p, k + 1, j) +
+                     p(i).dimensions._1 * p(k).dimensions._2 * p(j).dimensions._2 *
+                     max(p(i).sparsity, p(k).sparsity, p(j).sparsity)
           if (cost < m((i,j))) {
             m.put((i,j), cost)
             s.put((i,j), k)
@@ -35,20 +41,20 @@ object Prototype {
       m((i,j))
     }
 
-    def multOrder(i: Int, j: Int): MatrixFormula = {
-      if (i == j) Literal(i)
+    def generatePlan(i: Int, j: Int): MatrixFormula = {
+      if (i == j) p(i)
       else {
         val k = s((i,j))
-        val X = multOrder(i, k)
-        val Y = multOrder(k + 1, j)
+        val X = generatePlan(i, k)
+        val Y = generatePlan(k + 1, j)
         Product(X, Y)
       }
 
     }
 
-    val x = memMatrixChain(p, 1, p.length - 1)
+    computeCosts(p, 0, p.length - 1)
 
-    (x, multOrder(1, p.length - 1))
+    generatePlan(0, p.length - 1)
   }
 
 }
