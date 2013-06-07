@@ -3,15 +3,16 @@ import scala.collection.mutable.HashMap
 
 object Prototype {
 
-  sealed trait MatrixChain
-  case class MultOp(left: MatrixChain, right: MatrixChain) extends MatrixChain
-  case class Matrix(id: Int) extends MatrixChain
+  sealed trait MatrixFormula
+  case class Product(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
+  case class Sum(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
+  case class Literal(id: Int) extends MatrixFormula
 
   /**
    * p - array with dimensions of the chain of matrices
    * p_{i − 1} × p_{i} is multiplied by p_{i} × p_{i + 1}
    */
-  def memMatrix(p: Array[Int]): (Int, MatrixChain) = {
+  def memMatrix(p: Array[Int]): (Int, MatrixFormula) = {
     // costs array for each subchain
     val m = HashMap.empty[(Int,Int), Int]
     // split marker array
@@ -34,13 +35,13 @@ object Prototype {
       m((i,j))
     }
 
-    def multOrder(i: Int, j: Int): MatrixChain = {
-      if (i == j) Matrix(i)
+    def multOrder(i: Int, j: Int): MatrixFormula = {
+      if (i == j) Literal(i)
       else {
         val k = s((i,j))
         val X = multOrder(i, k)
         val Y = multOrder(k + 1, j)
-        MultOp(X, Y)
+        Product(X, Y)
       }
 
     }
