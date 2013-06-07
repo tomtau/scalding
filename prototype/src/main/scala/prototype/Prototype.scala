@@ -8,7 +8,7 @@ object Prototype {
   case class Sum(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
   case class Literal(dimensions: (Int, Int), sparsity: Float) extends MatrixFormula
 
-  def optimizeProductChain(p: Array[Literal]): MatrixFormula = {
+  def optimizeProductChain(p: Array[Literal]): (Float, MatrixFormula) = {
     // costs for each subchain
     val m = HashMap.empty[(Int,Int), Float]
     // split markers
@@ -52,9 +52,13 @@ object Prototype {
 
     }
 
-    computeCosts(p, 0, p.length - 1)
+    val best = computeCosts(p, 0, p.length - 1)
 
-    generatePlan(0, p.length - 1)
+    (best, generatePlan(0, p.length - 1))
   }
 
+  def matrixFormulaToChains(mf: MatrixFormula): List[Array[Literal]] = List()
+  
+  def optimize(mf: MatrixFormula): MatrixFormula = mf
+  
 }
