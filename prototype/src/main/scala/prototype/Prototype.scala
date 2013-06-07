@@ -1,4 +1,5 @@
 package prototype
+import scala.collection.mutable.HashMap
 
 object Prototype {
 
@@ -12,38 +13,38 @@ object Prototype {
    */
   def memMatrix(p: Array[Int]): (Int, MatrixChain) = {
     // costs array for each subchain
-    val m = Array.fill(p.length, p.length)(-1)
+    val m = HashMap.empty[(Int,Int), Int]
     // split marker array
     val s = Array.fill(p.length, p.length)(-1)
-    
+
     def memMatrixChain(p: Array[Int], i: Int, j: Int): Int = {
-      if (m(i)(j) != -1) m(i)(j)
-      if (i == j) m(i)(j) = 0
+      if (m.contains((i,j))) m((i,j))
+      if (i == j) m.put((i,j), 0)
       else {
-        m(i)(j) = Int.MaxValue
+        m.put((i,j), Int.MaxValue)
         for (k <- i to (j - 1)) {
           val cost = memMatrixChain(p, i, k) + memMatrixChain(p, k + 1, j) + p(i-1)*p(k)*p(j)
-          if (cost < m(i)(j)) { 
-            m(i)(j) = cost
+          if (cost < m((i,j))) {
+            m.put((i,j), cost)
             s(i)(j) = k
           }
         }
       }
-      
-      m(i)(j)
+
+      m((i,j))
     }
-    
+
     def multOrder(i: Int, j: Int): MatrixChain = {
       if (i == j) Matrix(i)
       else {
         val k = s(i)(j)
         val X = multOrder(i, k)
-        val Y = multOrder(k+1, j)
+        val Y = multOrder(k + 1, j)
         MultOp(X, Y)
       }
-      
+
     }
-    
+
     val x = memMatrixChain(p, 1, p.length - 1)
 
     (x, multOrder(1, p.length - 1))
