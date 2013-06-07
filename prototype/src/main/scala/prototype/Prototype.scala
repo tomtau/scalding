@@ -15,7 +15,7 @@ object Prototype {
     // costs array for each subchain
     val m = HashMap.empty[(Int,Int), Int]
     // split marker array
-    val s = Array.fill(p.length, p.length)(-1)
+    val s = HashMap.empty[(Int,Int), Int]
 
     def memMatrixChain(p: Array[Int], i: Int, j: Int): Int = {
       if (m.contains((i,j))) m((i,j))
@@ -26,7 +26,7 @@ object Prototype {
           val cost = memMatrixChain(p, i, k) + memMatrixChain(p, k + 1, j) + p(i-1)*p(k)*p(j)
           if (cost < m((i,j))) {
             m.put((i,j), cost)
-            s(i)(j) = k
+            s.put((i,j), k)
           }
         }
       }
@@ -37,7 +37,7 @@ object Prototype {
     def multOrder(i: Int, j: Int): MatrixChain = {
       if (i == j) Matrix(i)
       else {
-        val k = s(i)(j)
+        val k = s((i,j))
         val X = multOrder(i, k)
         val Y = multOrder(k + 1, j)
         MultOp(X, Y)
