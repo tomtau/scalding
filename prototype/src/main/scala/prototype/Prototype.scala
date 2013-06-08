@@ -58,12 +58,12 @@ object Prototype {
   }
 
   def matrixFormulaToChains(mf: MatrixFormula): List[Array[Literal]] = {
-    
+
     def nilOrList(result: List[Literal]): List[List[Literal]] = {
       if (result.isEmpty) Nil
       else List(result)
     }
-    
+
     def toProductChains(mf: MatrixFormula, result: List[Literal]): List[List[Literal]] = {
       mf match {
         case element: Literal => List(result ::: List(element))
@@ -76,10 +76,10 @@ object Prototype {
     }
     toProductChains(mf, List()).map(a => a.toArray)
   }
-  
+
   def optimize(mf: MatrixFormula): MatrixFormula = {
     val optimizedChains = matrixFormulaToChains(mf).map(chain => optimizeProductChain(chain)._2)
     optimizedChains.reduce((x,y) => Sum(x,y))
   }
-  
+
 }
