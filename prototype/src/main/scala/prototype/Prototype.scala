@@ -57,7 +57,19 @@ object Prototype {
     (best, generatePlan(0, p.length - 1))
   }
 
-  def matrixFormulaToChains(mf: MatrixFormula): List[Array[Literal]] = List()
+  def matrixFormulaToChains(mf: MatrixFormula): List[Array[Literal]] = {
+    def toProductChains(mf: MatrixFormula, result: List[Literal]): List[List[Literal]] = {
+      mf match {
+        case element: Literal => List(result ::: List(element))
+        case sumOp: Sum => List(result) ++ toProductChains(sumOp.left, List()) ++ toProductChains(sumOp.right, List())
+        case multOp: Product => {
+          val left = toProductChains(multOp.left, result)
+          left.slice(0, left.length - 2) ++ toProductChains(multOp.right, left.last)
+        }
+      }
+    }
+    toProductChains(mf, List()).map(a => a.toArray)
+  }
   
   def optimize(mf: MatrixFormula): MatrixFormula = mf
   

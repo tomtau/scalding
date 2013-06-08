@@ -62,11 +62,19 @@ class TestPrototype extends FunSuite with Checkers {
   }
 
   test("optimized matrix formula to a sequence") {
-    expect(List(productSequence)) {matrixFormulaToChains(optimizedPlan)}
+    val result = matrixFormulaToChains(optimizedPlan).head
+    expect(productSequence.length) {result.length}
+    for {
+      i <- 0 to (productSequence.length - 1)
+    } yield expect(productSequence(i)) {result(i)}    
   }
 
   test("unoptimized matrix formula to a sequence") {
-    expect(List(productSequence)) {matrixFormulaToChains(unoptimizedPlan)}
+    val result = matrixFormulaToChains(unoptimizedPlan).head
+    expect(productSequence.length) {result.length}
+    for {
+      i <- 0 to (productSequence.length - 1)
+    } yield expect(productSequence(i)) {result(i)}  
   }
 
   test("optimizing an optimized plan") {
