@@ -38,10 +38,20 @@ class TestPrototype extends FunSuite with Checkers {
               )
           )
       ))
-         
+
+  val simplePlan = Product(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
+  
+  val combinedUnoptimizedPlan = Sum(unoptimizedPlan, simplePlan)
+  
+  val combinedOptimizedPlan = Sum(optimizedPlan, simplePlan)
+  
   val productSequence = Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
         Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
         Literal((20, 25), 1.0f))
+
+  val combinedSequence = List(Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
+        Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
+        Literal((20, 25), 1.0f)), Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f)))   
          
   test("base case") {
     val p = Array(Literal((30, 35), 1.0f))
@@ -52,7 +62,7 @@ class TestPrototype extends FunSuite with Checkers {
   test("only two matrices") {
     val p = Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
     val result = optimizeProductChain(p)
-    expect((15750.0, Product(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f)))) {result}
+    expect((15750.0, simplePlan)) {result}
   }
   
   test("basic test of dynamic programming optimization of a matrix multiplication chain") {
@@ -77,6 +87,24 @@ class TestPrototype extends FunSuite with Checkers {
     } yield expect(productSequence(i)) {result(i)}  
   }
 
+  test("optimized sum matrix formula to a sequence") {
+    val result = matrixFormulaToChains(combinedOptimizedPlan)
+    expect(combinedSequence.length) {result.length}
+    for {
+      i <- 0 to (combinedSequence.length - 1)
+      j <- 0 to (combinedSequence(i).length - 1)
+    } yield expect(combinedSequence(i)(j)) {result(i)(j)}    
+  }
+
+  test("unoptimized sum matrix formula to a sequence") {
+    val result = matrixFormulaToChains(combinedUnoptimizedPlan)
+    expect(combinedSequence.length) {result.length}
+    for {
+      i <- 0 to (combinedSequence.length - 1)
+      j <- 0 to (combinedSequence(i).length - 1)
+    } yield expect(combinedSequence(i)(j)) {result(i)(j)}    
+  }
+  
   test("optimizing an optimized plan") {
     expect(optimizedPlan) {optimize(optimizedPlan)}
   }
@@ -84,7 +112,15 @@ class TestPrototype extends FunSuite with Checkers {
   test("optimizing an unoptimized plan") {
     expect(optimizedPlan) {optimize(unoptimizedPlan)}
   }  
+
+  test("optimizing an optimized plan with sum") {
+    expect(combinedOptimizedPlan) {optimize(combinedOptimizedPlan)}
+  }
   
+  test("optimizing an unoptimized plan with sum") {
+    expect(combinedOptimizedPlan) {optimize(combinedUnoptimizedPlan)}
+  }
+    
   test("scalacheck: optimizing an optimized plan does not change it") {
     check((a: MatrixFormula) => optimize(a) == optimize(optimize(a)))
   }
