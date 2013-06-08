@@ -21,7 +21,7 @@ class TestPrototype extends FunSuite with Checkers {
     right <- genFormula
   } yield if (v > 0) Product(left, right) else Sum(left, right)
 
-  def genFormula: Gen[MatrixFormula] = oneOf(genLeaf, genNode)  
+  def genFormula: Gen[MatrixFormula] = frequency((3, genLeaf), (1, genNode))  
   
   implicit def arbT: Arbitrary[MatrixFormula] = Arbitrary(genFormula)
   
