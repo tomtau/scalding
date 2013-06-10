@@ -8,7 +8,7 @@ object Prototype {
   case class Sum(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
   case class Literal(dimensions: (Int, Int), sparsity: Float) extends MatrixFormula
 
-  def optimizeProductChain(p: Array[Literal]): (Float, MatrixFormula) = {
+  def optimizeProductChain(p: IndexedSeq[Literal]): (Float, MatrixFormula) = {
     // costs for each subchain
     val m = HashMap.empty[(Int,Int), Float]
     // split markers
@@ -22,7 +22,7 @@ object Prototype {
       }
     }
 
-    def computeCosts(p: Array[Literal], i: Int, j: Int): Float = {
+    def computeCosts(p: IndexedSeq[Literal], i: Int, j: Int): Float = {
       if (m.contains((i,j))) m((i,j))
       if (i == j) m.put((i,j), 0)
       else {
@@ -57,7 +57,7 @@ object Prototype {
     (best, generatePlan(0, p.length - 1))
   }
 
-  def matrixFormulaToChains(mf: MatrixFormula): List[Array[Literal]] = {
+  def matrixFormulaToChains(mf: MatrixFormula): List[IndexedSeq[Literal]] = {
 
     def nilOrList(result: List[Literal]): List[List[Literal]] = {
       if (result.isEmpty) Nil
@@ -74,7 +74,7 @@ object Prototype {
         }
       }
     }
-    toProductChains(mf, List()).map(a => a.toArray)
+    toProductChains(mf, List()).map(a => a.toIndexedSeq)
   }
 
   def optimize(mf: MatrixFormula): MatrixFormula = {

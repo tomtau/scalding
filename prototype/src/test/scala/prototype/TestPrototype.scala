@@ -45,22 +45,22 @@ class TestPrototype extends FunSuite with Checkers {
   
   val combinedOptimizedPlan = Sum(optimizedPlan, simplePlan)
   
-  val productSequence = Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
+  val productSequence = IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
         Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
         Literal((20, 25), 1.0f))
 
-  val combinedSequence = List(Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
+  val combinedSequence = List(IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
         Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
-        Literal((20, 25), 1.0f)), Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f)))   
+        Literal((20, 25), 1.0f)), IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f)))   
          
   test("base case") {
-    val p = Array(Literal((30, 35), 1.0f))
+    val p = IndexedSeq(Literal((30, 35), 1.0f))
     val result = optimizeProductChain(p)
     expect((0.0, Literal((30, 35), 1.0f))) {result}
   }  
   
   test("only two matrices") {
-    val p = Array(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
+    val p = IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
     val result = optimizeProductChain(p)
     expect((15750.0, simplePlan)) {result}
   }
