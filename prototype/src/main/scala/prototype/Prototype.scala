@@ -81,5 +81,9 @@ object Prototype {
     val optimizedChains = matrixFormulaToChains(mf).map(chain => optimizeProductChain(chain)._2)
     optimizedChains.reduce((x,y) => Sum(x,y))
   }
+  
+  def evaluate(mf: MatrixFormula): Float = {
+    0.0f
+  }
 
 }

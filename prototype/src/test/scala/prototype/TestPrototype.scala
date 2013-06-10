@@ -28,7 +28,9 @@ class TestPrototype extends FunSuite with Checkers {
   // ((A1(A2 A3))((A4 A5) A6)
   val optimizedPlan = Product( Product( Literal((30, 35), 1.0f), Product( Literal((35, 15), 1.0f), Literal((15, 5), 1.0f))),
          Product( Product( Literal((5, 10), 1.0f), Literal((10, 20), 1.0f)), Literal((20, 25), 1.0f)))
-  
+
+  val optimizedPlanCost = 15125.0
+
   // A1(A2(A3(A4(A5 A6))))
   val unoptimizedPlan = Product(Literal((30, 35), 1.0f), 
       Product(Literal((35, 15), 1.0f),
@@ -40,7 +42,9 @@ class TestPrototype extends FunSuite with Checkers {
       ))
 
   val simplePlan = Product(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
-  
+
+  val simplePlanCost = 15750.0
+
   val combinedUnoptimizedPlan = Sum(unoptimizedPlan, simplePlan)
   
   val combinedOptimizedPlan = Sum(optimizedPlan, simplePlan)
@@ -62,13 +66,13 @@ class TestPrototype extends FunSuite with Checkers {
   test("only two matrices") {
     val p = IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
     val result = optimizeProductChain(p)
-    expect((15750.0, simplePlan)) {result}
+    expect((simplePlanCost, simplePlan)) {result}
   }
   
   test("basic test of dynamic programming optimization of a matrix multiplication chain") {
     val result = optimizeProductChain(productSequence)
 
-    expect((15125.0, optimizedPlan)) {result}
+    expect((optimizedPlanCost, optimizedPlan)) {result}
   }
 
   test("optimized matrix formula to a sequence") {
@@ -124,5 +128,16 @@ class TestPrototype extends FunSuite with Checkers {
   test("scalacheck: optimizing an optimized plan does not change it") {
     check((a: MatrixFormula) => optimize(a) == optimize(optimize(a)))
   }
+
+  test("evaluate returns correct cost for an optimized plan") {
+    expect(optimizedPlanCost) {evaluate(optimizedPlan)}
+  }
+
+  test("evaluate returns correct cost for a simple plan") {
+    expect(simplePlanCost) {evaluate(simplePlan)}
+  }
   
+  test("evaluate returns correct cost for a combined optimized plan") {
+    expect(simplePlanCost + optimizedPlanCost) {evaluate(combinedOptimizedPlan)}
+  }  
 }
