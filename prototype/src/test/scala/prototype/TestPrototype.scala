@@ -41,9 +41,9 @@ class TestPrototype extends FunSuite with Checkers {
           )
       ))
 
-  val simplePlan = Product(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
+  val simplePlan = Product(Literal((30, 35), 1.0f), Literal((35, 25), 1.0f))
 
-  val simplePlanCost = 15750.0
+  val simplePlanCost = 26250
 
   val combinedUnoptimizedPlan = Sum(unoptimizedPlan, simplePlan)
   
@@ -55,7 +55,7 @@ class TestPrototype extends FunSuite with Checkers {
 
   val combinedSequence = List(IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
         Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
-        Literal((20, 25), 1.0f)), IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f)))   
+        Literal((20, 25), 1.0f)), IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 25), 1.0f)))   
          
   test("base case") {
     val p = IndexedSeq(Literal((30, 35), 1.0f))
@@ -64,7 +64,7 @@ class TestPrototype extends FunSuite with Checkers {
   }  
   
   test("only two matrices") {
-    val p = IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f))
+    val p = IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 25), 1.0f))
     val result = optimizeProductChain(p)
     expect((simplePlanCost, simplePlan)) {result}
   }
@@ -130,14 +130,14 @@ class TestPrototype extends FunSuite with Checkers {
   }
 
   test("evaluate returns correct cost for an optimized plan") {
-    expect(optimizedPlanCost) {evaluate(optimizedPlan)}
+    expect((optimizedPlanCost, (30,25), 1.0f)) {evaluate(optimizedPlan)}
   }
 
   test("evaluate returns correct cost for a simple plan") {
-    expect(simplePlanCost) {evaluate(simplePlan)}
+    expect((simplePlanCost, (30,25), 1.0f)) {evaluate(simplePlan)}
   }
   
   test("evaluate returns correct cost for a combined optimized plan") {
-    expect(simplePlanCost + optimizedPlanCost) {evaluate(combinedOptimizedPlan)}
+    expect((simplePlanCost + optimizedPlanCost, (30,25), 1.0f)) {evaluate(combinedOptimizedPlan)}
   }  
 }

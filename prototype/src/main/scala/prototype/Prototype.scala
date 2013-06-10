@@ -81,9 +81,27 @@ object Prototype {
     val optimizedChains = matrixFormulaToChains(mf).map(chain => optimizeProductChain(chain)._2)
     optimizedChains.reduce((x,y) => Sum(x,y))
   }
-  
-  def evaluate(mf: MatrixFormula): Float = {
-    0.0f
+
+  /**
+   * returns resulting cost, dimensions, sparsity
+   */
+  def evaluate(mf: MatrixFormula): (Float, (Int, Int), Float) = {
+    def max(one: Float, two: Float): Float = if (one > two) one else two
+
+    mf match {
+      case element: Literal => (0.0f, element.dimensions, element.sparsity)
+      case Sum(left, right) => {
+        val l = evaluate(left)
+        val r = evaluate(right)
+        (l._1 + r._1, l._2, max(l._3, r._3))
+      }
+      case Product(left, right) => {
+        val l = evaluate(left)
+        val r = evaluate(right)
+        (l._1 + r._1 + l._2._1 * l._2._2 * r._2._2 * max(l._3, r._3),
+            (l._2._1,r._2._2), max(l._3, r._3))
+      }
+    }
   }
 
 }
