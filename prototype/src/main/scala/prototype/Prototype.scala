@@ -67,14 +67,14 @@ object Prototype {
     def toProductChains(mf: MatrixFormula, result: List[Literal]): List[List[Literal]] = {
       mf match {
         case element: Literal => List(result ::: List(element))
-        case sumOp: Sum => nilOrList(result) ++ toProductChains(sumOp.left, List()) ++ toProductChains(sumOp.right, List())
+        case sumOp: Sum => nilOrList(result) ++ (toProductChains(sumOp.left, Nil) ++ toProductChains(sumOp.right, Nil))
         case multOp: Product => {
           val left = toProductChains(multOp.left, result)
           left.slice(0, left.length - 2) ++ toProductChains(multOp.right, left.last)
         }
       }
     }
-    toProductChains(mf, List()).map(a => a.toIndexedSeq)
+    toProductChains(mf, Nil).map(a => a.toIndexedSeq)
   }
 
   def optimize(mf: MatrixFormula): MatrixFormula = {
