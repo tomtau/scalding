@@ -59,7 +59,7 @@ object Prototype {
 
   def matrixFormulaToChains(mf: MatrixFormula): List[IndexedSeq[Literal]] = {
 
-    def nilOrList(result: List[Literal]): List[List[Literal]] = {
+    def unflatten(result: List[Literal]): List[List[Literal]] = {
       if (result.isEmpty) Nil
       else List(result)
     }
@@ -67,7 +67,7 @@ object Prototype {
     def toProductChains(mf: MatrixFormula, result: List[Literal]): List[List[Literal]] = {
       mf match {
         case element: Literal => List(result ::: List(element))
-        case Sum(left, right) => nilOrList(result) ++ (toProductChains(left, Nil) ++ toProductChains(right, Nil))
+        case Sum(left, right) => unflatten(result) ++ (toProductChains(left, Nil) ++ toProductChains(right, Nil))
         case Product(leftp, rightp) => {
           val left = toProductChains(leftp, result)
           left.slice(0, left.length - 2) ++ toProductChains(rightp, left.last)
