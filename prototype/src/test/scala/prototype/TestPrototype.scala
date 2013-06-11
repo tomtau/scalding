@@ -166,9 +166,13 @@ class TestPrototype extends FunSuite with Checkers {
     check((a: MatrixFormula) => optimize(a)._1 == evaluate(optimize(a)._2)._1)
   }  
 
-
   test("scalacheck: testing costs of optimized chains") {
     check((a: List[Literal]) => optimizeProductChain(a.toIndexedSeq)._1 <= evaluate(generateRandomPlan(0, a.length - 1, a.toIndexedSeq))._1)
   }   
+
+  test("scalacheck: testing costs of optimized plans versus random plans") {
+    check((a: MatrixFormula) => optimize(a)._1 <= evaluate(a)._1)
+  }   
+
   
 }
