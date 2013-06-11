@@ -24,6 +24,30 @@ class TestPrototype extends FunSuite with Checkers {
   def genFormula: Gen[MatrixFormula] = frequency((3, genLeaf), (1, genNode))  
   
   implicit def arbT: Arbitrary[MatrixFormula] = Arbitrary(genFormula)
+
+  val genDimList = for {
+    v <- Gen.choose(2, 7)
+    dim <- Gen.listOfN(v, Gen.choose(1, 1000000000))
+  } yield dim
+
+  def generateRandomPlan(i: Int, j: Int, p: IndexedSeq[Literal]): MatrixFormula = {
+    def genRoutine(k: Int): MatrixFormula = {
+      val X = generateRandomPlan(i, k, p)
+      val Y = generateRandomPlan(k + 1, j, p)
+      Product(X, Y)      
+    }
+    
+    if (i == j) p(i)
+    else {
+      val genK = Gen.choose(i, j)
+      genK.sample match {
+        case None => genRoutine(i)
+        case Some(x) => genRoutine(x)
+      }
+
+    }
+
+  }
   
   // ((A1(A2 A3))((A4 A5) A6)
   val optimizedPlan = Product( Product( Literal((30, 35), 1.0f), Product( Literal((35, 15), 1.0f), Literal((15, 5), 1.0f))),
@@ -141,5 +165,10 @@ class TestPrototype extends FunSuite with Checkers {
   
   test("evaluate returns correct cost for a combined optimized plan") {
     expect((combinedOptimizedPlanCost, (30,25), 1.0f)) {evaluate(combinedOptimizedPlan)}
+  }
+  
+  test("scalacheck: testing evaluate") {
+    check((a: MatrixFormula) => optimize(a)._1 == evaluate(optimize(a)._2)._1)
   }  
+
 }

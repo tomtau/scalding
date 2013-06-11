@@ -8,9 +8,9 @@ object Prototype {
   case class Sum(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
   case class Literal(dimensions: (Int, Int), sparsity: Float) extends MatrixFormula
 
-  def optimizeProductChain(p: IndexedSeq[Literal]): (Float, MatrixFormula) = {
+  def optimizeProductChain(p: IndexedSeq[Literal]): (Double, MatrixFormula) = {
 
-    val subchainCosts = HashMap.empty[(Int,Int), Float]
+    val subchainCosts = HashMap.empty[(Int,Int), Double]
 
     val splitMarkers = HashMap.empty[(Int,Int), Int]
 
@@ -22,11 +22,11 @@ object Prototype {
       }
     }
 
-    def computeCosts(p: IndexedSeq[Literal], i: Int, j: Int): Float = {
+    def computeCosts(p: IndexedSeq[Literal], i: Int, j: Int): Double = {
       if (subchainCosts.contains((i,j))) subchainCosts((i,j))
       if (i == j) subchainCosts.put((i,j), 0)
       else {
-        subchainCosts.put((i,j), Int.MaxValue)
+        subchainCosts.put((i,j), Double.MaxValue)
         for (k <- i to (j - 1)) {
           val ((rowsI, colsI), (rowsJ, colsJ)) = (p(i).dimensions, p(j).dimensions)
           val cost = computeCosts(p, i, k) + computeCosts(p, k + 1, j) +
@@ -78,7 +78,7 @@ object Prototype {
     toProductChains(mf, Nil).map(a => a.toIndexedSeq)
   }
 
-  def optimize(mf: MatrixFormula): (Float, MatrixFormula) = {
+  def optimize(mf: MatrixFormula): (Double, MatrixFormula) = {
     val optimizedChains = matrixFormulaToChains(mf)
     (optimizedChains.map(chain => optimizeProductChain(chain)._1).reduce((x,y) => x + y),
         optimizedChains.map(chain => optimizeProductChain(chain)._2).reduce((x,y) => Sum(x,y)))
@@ -87,7 +87,7 @@ object Prototype {
   /**
    * returns resulting cost, dimensions, sparsity
    */
-  def evaluate(mf: MatrixFormula): (Float, (Int, Int), Float) = {
+  def evaluate(mf: MatrixFormula): (Double, (Int, Int), Float) = {
     def max(one: Float, two: Float): Float = if (one > two) one else two
 
     mf match {
