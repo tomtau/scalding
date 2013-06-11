@@ -28,8 +28,9 @@ object Prototype {
       else {
         subchainCosts.put((i,j), Int.MaxValue)
         for (k <- i to (j - 1)) {
+          val ((rowsI, colsI), (rowsJ, colsJ)) = (p(i).dimensions, p(j).dimensions)
           val cost = computeCosts(p, i, k) + computeCosts(p, k + 1, j) +
-                     p(i).dimensions._1 * p(k).dimensions._2 * p(j).dimensions._2 *
+                     rowsI * p(k).dimensions._2 * colsJ *
                      max(p(i).sparsity, p(k).sparsity, p(j).sparsity)
           if (cost < subchainCosts((i,j))) {
             subchainCosts.put((i,j), cost)
@@ -91,15 +92,15 @@ object Prototype {
     mf match {
       case element: Literal => (0.0f, element.dimensions, element.sparsity)
       case Sum(left, right) => {
-        val l = evaluate(left)
-        val r = evaluate(right)
-        (l._1 + r._1, l._2, max(l._3, r._3))
+        val (costL, dimL, sparsL) = evaluate(left)
+        val (costR, dimR, sparsR) = evaluate(right)
+        (costL + costR, dimR, max(sparsL, sparsL))
       }
       case Product(left, right) => {
-        val l = evaluate(left)
-        val r = evaluate(right)
-        (l._1 + r._1 + l._2._1 * l._2._2 * r._2._2 * max(l._3, r._3),
-            (l._2._1,r._2._2), max(l._3, r._3))
+        val (costL, (rowsL, colsL), sparsL) = evaluate(left)
+        val (costR, (rowsR, colsR), sparsR) = evaluate(right)
+        (costL + costR + rowsL * colsL * colsR * max(sparsL, sparsR),
+            (rowsL,colsR), max(sparsL, sparsR))
       }
     }
   }
