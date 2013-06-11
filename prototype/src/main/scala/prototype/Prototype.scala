@@ -22,6 +22,8 @@ object Prototype {
       }
     }
 
+    val sparsities = p.map(x => x.sparsity)
+
     def computeCosts(p: IndexedSeq[Literal], i: Int, j: Int): Double = {
       if (subchainCosts.contains((i,j))) subchainCosts((i,j))
       if (i == j) subchainCosts.put((i,j), 0)
@@ -30,8 +32,8 @@ object Prototype {
         for (k <- i to (j - 1)) {
           val ((rowsI, colsI), (rowsJ, colsJ)) = (p(i).dimensions, p(j).dimensions)
           val cost = computeCosts(p, i, k) + computeCosts(p, k + 1, j) +
-                     rowsI * p(k).dimensions._2 * colsJ *
-                     max(p(i).sparsity, p(k).sparsity, p(j).sparsity)
+                     rowsI * p(k).dimensions._2 * colsJ * sparsities.slice(i, j + 1).max
+                     //max(p(i).sparsity, p(k).sparsity, p(j).sparsity)
           if (cost < subchainCosts((i,j))) {
             subchainCosts.put((i,j), cost)
             splitMarkers.put((i,j), k)

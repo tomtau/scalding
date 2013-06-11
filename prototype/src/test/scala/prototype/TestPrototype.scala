@@ -13,25 +13,25 @@ import prototype.Prototype._
 
 class TestPrototype extends FunSuite with Checkers {
 
-  def genLeaf2(dims: (Int,Int)): Stream[Literal] = {
+  def genLeaf(dims: (Int,Int)): Stream[Literal] = {
   	val (rows, cols) = dims
-  	val sparGen = Gen.choose(0, 100)
-  	val sparsity = 1.0f //sparGen.sample.get / 100.0f //there is some bug with sparsity propagation
+  	val sparGen = Gen.choose(0.0f, 1.0f)
+  	val sparsity = sparGen.sample.get
   	val rowGen = Gen.choose(1, 1000)
   	val nextRows = if (rows <= 0) rowGen.sample.get else rows
   	if (cols <= 0) {
   		val colGen = Gen.choose(1, 1000)
   		val nextCols = colGen.sample.get
-  		Literal((nextRows, nextCols), sparsity) #:: genLeaf2((nextCols, 0))
+  		Literal((nextRows, nextCols), sparsity) #:: genLeaf((nextCols, 0))
   	} else {
   		Stream(Literal((nextRows, cols), sparsity))
   	}
   }
 
   def randomProduct(p: Int): MatrixFormula = {
-    if (p == 1) genLeaf2((5,5)).take(1)(0)
-    val left = genLeaf2((5,0)).take(p).toIndexedSeq
-    val full = left ++ genLeaf2((left.last.dimensions._2, 5)).toIndexedSeq
+    if (p == 1) genLeaf((5,5)).take(1)(0)
+    val left = genLeaf((5,0)).take(p).toIndexedSeq
+    val full = left ++ genLeaf((left.last.dimensions._2, 5)).toIndexedSeq
     generateRandomPlan(0, full.size - 1, full)
   }
   
@@ -42,13 +42,13 @@ class TestPrototype extends FunSuite with Checkers {
     right <- genFormula
   } yield if (v > 0) randomProduct(p) else Sum(left, right)
 
-  def genFormula: Gen[MatrixFormula] = oneOf(genNode, genLeaf2((5,5)).take(1).head)  
+  def genFormula: Gen[MatrixFormula] = oneOf(genNode, genLeaf((5,5)).take(1).head)  
   
   implicit def arbT: Arbitrary[MatrixFormula] = Arbitrary(genFormula)
 
   val genProdSeq = for {
     v <- Gen.choose(1, 10)
-  } yield genLeaf2((0,0)).take(v).toIndexedSeq
+  } yield genLeaf((0,0)).take(v).toIndexedSeq
 
   implicit def arbSeq: Arbitrary[IndexedSeq[Literal]] = Arbitrary(genProdSeq)
   
