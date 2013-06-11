@@ -25,26 +25,21 @@ class TestPrototype extends FunSuite with Checkers {
   
   implicit def arbT: Arbitrary[MatrixFormula] = Arbitrary(genFormula)
 
-  val genDimList = for {
+  val genProdSeq = for {
     v <- Gen.choose(2, 7)
-    dim <- Gen.listOfN(v, Gen.choose(1, 1000000000))
+    dim <- Gen.listOfN(v, genLeaf)
   } yield dim
 
+  implicit def arbSeq: Arbitrary[List[Literal]] = Arbitrary(genProdSeq)
+  
   def generateRandomPlan(i: Int, j: Int, p: IndexedSeq[Literal]): MatrixFormula = {
-    def genRoutine(k: Int): MatrixFormula = {
-      val X = generateRandomPlan(i, k, p)
-      val Y = generateRandomPlan(k + 1, j, p)
-      Product(X, Y)      
-    }
-    
     if (i == j) p(i)
     else {
-      val genK = Gen.choose(i, j)
-      genK.sample match {
-        case None => genRoutine(i)
-        case Some(x) => genRoutine(x)
-      }
-
+      val genK = Gen.choose(i, j - 1)
+      val k = genK.sample.getOrElse(i)
+      val X = generateRandomPlan(i, k, p)
+      val Y = generateRandomPlan(k + 1, j, p)
+      Product(X, Y) 
     }
 
   }
@@ -171,4 +166,9 @@ class TestPrototype extends FunSuite with Checkers {
     check((a: MatrixFormula) => optimize(a)._1 == evaluate(optimize(a)._2)._1)
   }  
 
+
+  test("scalacheck: testing costs of optimized chains") {
+    check((a: List[Literal]) => optimizeProductChain(a.toIndexedSeq)._1 <= evaluate(generateRandomPlan(0, a.length - 1, a.toIndexedSeq))._1)
+  }   
+  
 }
