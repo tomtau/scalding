@@ -80,7 +80,7 @@ object Prototype {
 
   def optimize(mf: MatrixFormula): (Double, MatrixFormula) = {
     val optimizedChains = matrixFormulaToChains(mf)
-    (optimizedChains.map(chain => optimizeProductChain(chain)._1).reduce((x,y) => x + y),
+    (optimizedChains.map(chain => optimizeProductChain(chain)._1).sum,
         optimizedChains.map(chain => optimizeProductChain(chain)._2).reduce((x,y) => Sum(x,y)))
   }
 
@@ -95,12 +95,12 @@ object Prototype {
       case Sum(left, right) => {
         val (costL, dimL, sparsL) = evaluate(left)
         val (costR, dimR, sparsR) = evaluate(right)
-        (costL + costR, dimR, max(sparsL, sparsL))
+        (costL + costR, dimR, max(sparsL, sparsR))
       }
       case Product(left, right) => {
         val (costL, (rowsL, colsL), sparsL) = evaluate(left)
         val (costR, (rowsR, colsR), sparsR) = evaluate(right)
-        (costL + costR + rowsL * colsL * colsR * max(sparsL, sparsR),
+        (costL + costR + (rowsL * colsL * colsR * max(sparsL, sparsR)),
             (rowsL,colsR), max(sparsL, sparsR))
       }
     }
