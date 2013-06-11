@@ -49,6 +49,8 @@ class TestPrototype extends FunSuite with Checkers {
   
   val combinedOptimizedPlan = Sum(optimizedPlan, simplePlan)
   
+  val combinedOptimizedPlanCost = optimizedPlanCost + simplePlanCost
+  
   val productSequence = IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
         Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
         Literal((20, 25), 1.0f))
@@ -110,23 +112,23 @@ class TestPrototype extends FunSuite with Checkers {
   }
   
   test("optimizing an optimized plan") {
-    expect(optimizedPlan) {optimize(optimizedPlan)}
+    expect((optimizedPlanCost, optimizedPlan)) {optimize(optimizedPlan)}
   }
 
   test("optimizing an unoptimized plan") {
-    expect(optimizedPlan) {optimize(unoptimizedPlan)}
+    expect((optimizedPlanCost, optimizedPlan)) {optimize(unoptimizedPlan)}
   }  
 
   test("optimizing an optimized plan with sum") {
-    expect(combinedOptimizedPlan) {optimize(combinedOptimizedPlan)}
+    expect((combinedOptimizedPlanCost,combinedOptimizedPlan)) {optimize(combinedOptimizedPlan)}
   }
   
   test("optimizing an unoptimized plan with sum") {
-    expect(combinedOptimizedPlan) {optimize(combinedUnoptimizedPlan)}
+    expect((combinedOptimizedPlanCost, combinedOptimizedPlan)) {optimize(combinedUnoptimizedPlan)}
   }
     
   test("scalacheck: optimizing an optimized plan does not change it") {
-    check((a: MatrixFormula) => optimize(a) == optimize(optimize(a)))
+    check((a: MatrixFormula) => optimize(a) == optimize(optimize(a)._2))
   }
 
   test("evaluate returns correct cost for an optimized plan") {
@@ -138,6 +140,6 @@ class TestPrototype extends FunSuite with Checkers {
   }
   
   test("evaluate returns correct cost for a combined optimized plan") {
-    expect((simplePlanCost + optimizedPlanCost, (30,25), 1.0f)) {evaluate(combinedOptimizedPlan)}
+    expect((combinedOptimizedPlanCost, (30,25), 1.0f)) {evaluate(combinedOptimizedPlan)}
   }  
 }

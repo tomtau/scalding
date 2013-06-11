@@ -78,9 +78,10 @@ object Prototype {
     toProductChains(mf, Nil).map(a => a.toIndexedSeq)
   }
 
-  def optimize(mf: MatrixFormula): MatrixFormula = {
-    val optimizedChains = matrixFormulaToChains(mf).map(chain => optimizeProductChain(chain)._2)
-    optimizedChains.reduce((x,y) => Sum(x,y))
+  def optimize(mf: MatrixFormula): (Float, MatrixFormula) = {
+    val optimizedChains = matrixFormulaToChains(mf)
+    (optimizedChains.map(chain => optimizeProductChain(chain)._1).reduce((x,y) => x + y),
+        optimizedChains.map(chain => optimizeProductChain(chain)._2).reduce((x,y) => Sum(x,y)))
   }
 
   /**
