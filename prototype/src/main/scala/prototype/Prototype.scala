@@ -86,25 +86,4 @@ object Prototype {
         optimizedChains.map(chain => optimizeProductChain(chain)._2).reduce((x,y) => Sum(x,y)))
   }
 
-  /**
-   * returns resulting cost, dimensions, sparsity
-   */
-  def evaluate(mf: MatrixFormula): (Double, (Int, Int), Float) = {
-
-    mf match {
-      case element: Literal => (0.0f, element.dimensions, element.sparsity)
-      case Sum(left, right) => {
-        val (costL, dimL, sparsL) = evaluate(left)
-        val (costR, dimR, sparsR) = evaluate(right)
-        (costL + costR, dimR, sparsL.max(sparsR))
-      }
-      case Product(left, right) => {
-        val (costL, (rowsL, colsL), sparsL) = evaluate(left)
-        val (costR, (rowsR, colsR), sparsR) = evaluate(right)
-        (costL + costR + (rowsL * colsL * colsR * sparsL.max(sparsR)),
-            (rowsL,colsR), sparsL.max(sparsR))
-      }
-    }
-  }
-
 }

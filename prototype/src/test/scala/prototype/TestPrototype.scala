@@ -182,6 +182,31 @@ class TestPrototype extends FunSuite with Checkers {
   }
 
   /**
+   * Function that recursively estimates a cost of a given MatrixFormula / plan.
+   * This is the used in the tests for checking whether an optimized plan has
+   * a cost <= a randomized plan.
+   * The cost estimation of this evaluation should return the same values as the one
+   * used in building optimized plans -- this is checked in the tests below.
+   * @return (resulting cost, dimensions, sparsity)
+   */
+  def evaluate(mf: MatrixFormula): (Double, (Int, Int), Float) = {
+    mf match {
+      case element: Literal => (0.0, element.dimensions, element.sparsity)
+      case Sum(left, right) => {
+        val (costL, dimL, sparsL) = evaluate(left)
+        val (costR, dimR, sparsR) = evaluate(right)
+        (costL + costR, dimR, sparsL.max(sparsR))
+      }
+      case Product(left, right) => {
+        val (costL, (rowsL, colsL), sparsL) = evaluate(left)
+        val (costR, (rowsR, colsR), sparsR) = evaluate(right)
+        (costL + costR + (rowsL * colsL * colsR * sparsL.max(sparsR)),
+            (rowsL,colsR), sparsL.max(sparsR))
+      }
+    }
+  }
+    
+  /**
    * Verifying "evaluate" function - that it does return
    * the same overall costs as what is estimated in the optimization procedure 
    */
