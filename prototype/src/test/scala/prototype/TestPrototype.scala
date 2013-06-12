@@ -13,6 +13,9 @@ import prototype.Prototype._
 
 class TestPrototype extends FunSuite with Checkers {
 
+  /**
+   * Helper methods used in tests for randomized generations
+   */
   def genLeaf(dims: (Int,Int)): Stream[Literal] = {
   	val (rows, cols) = dims
   	val sparGen = Gen.choose(0.0f, 1.0f)
@@ -61,9 +64,11 @@ class TestPrototype extends FunSuite with Checkers {
       val Y = generateRandomPlan(k + 1, j, p)
       Product(X, Y) 
     }
-
   }
   
+  /**
+   * Values used in tests
+   */
   // ((A1(A2 A3))((A4 A5) A6)
   val optimizedPlan = Product( Product( Literal((30, 35), 1.0f), Product( Literal((35, 15), 1.0f), Literal((15, 5), 1.0f))),
          Product( Product( Literal((5, 10), 1.0f), Literal((10, 20), 1.0f)), Literal((20, 25), 1.0f)))
@@ -97,7 +102,10 @@ class TestPrototype extends FunSuite with Checkers {
   val combinedSequence = List(IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
         Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
         Literal((20, 25), 1.0f)), IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 25), 1.0f)))   
-         
+
+  /**
+   * Basic "weak" test cases used in development
+   */
   test("base case") {
     val p = IndexedSeq(Literal((30, 35), 1.0f))
     val result = optimizeProductChain(p)
@@ -165,11 +173,18 @@ class TestPrototype extends FunSuite with Checkers {
   test("optimizing an unoptimized plan with sum") {
     expect((combinedOptimizedPlanCost, combinedOptimizedPlan)) {optimize(combinedUnoptimizedPlan)}
   }
-    
+
+  /**
+   * Sanity check
+   */
   test("scalacheck: optimizing an optimized plan does not change it") {
     check((a: MatrixFormula) => optimize(a) == optimize(optimize(a)._2))
   }
 
+  /**
+   * Verifying "evaluate" function - that it does return
+   * the same overall costs as what is estimated in the optimization procedure 
+   */
   test("evaluate returns correct cost for an optimized plan") {
     expect((optimizedPlanCost, (30,25), 1.0f)) {evaluate(optimizedPlan)}
   }
@@ -186,6 +201,10 @@ class TestPrototype extends FunSuite with Checkers {
     check((a: MatrixFormula) => optimize(a)._1 == evaluate(optimize(a)._2)._1)
   }  
 
+  /**
+   * "Proof": the goal property that estimated costs of optimized plans or product chains
+   * are less than or equal to costs of randomized equivalent plans or product chains
+   */
   test("scalacheck: testing costs of optimized chains") {
     check((a: IndexedSeq[Literal]) => optimizeProductChain(a)._1 <= evaluate(generateRandomPlan(0, a.length - 1, a))._1)
   }   
