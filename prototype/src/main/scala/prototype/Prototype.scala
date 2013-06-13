@@ -1,12 +1,23 @@
 package prototype
 import scala.collection.mutable.HashMap
+import com.twitter.scalding.mathematics.NoClue
+import com.twitter.scalding.mathematics.SizeHint
+import com.twitter.scalding.mathematics.SparseHint
 
 object Prototype {
 
-  sealed trait MatrixFormula
-  case class Product(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
-  case class Sum(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula
-  case class Literal(dimensions: (Int, Int), sparsity: Float) extends MatrixFormula
+  sealed trait MatrixFormula {
+    val sizeHint : SizeHint = NoClue
+  }
+  case class Product(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula {
+    override val sizeHint = left.sizeHint * right.sizeHint
+  }
+  case class Sum(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula {
+    override val sizeHint = left.sizeHint + right.sizeHint
+  }
+  case class Literal(dimensions: (Long, Long), sparsity: Double) extends MatrixFormula {
+    override val sizeHint = SparseHint(sparsity, dimensions._1, dimensions._2)
+  }
 
   def optimizeProductChain(p: IndexedSeq[Literal]): (Double, MatrixFormula) = {
 

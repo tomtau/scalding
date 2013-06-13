@@ -16,7 +16,7 @@ class TestPrototype extends FunSuite with Checkers {
   /**
    * Helper methods used in tests for randomized generations
    */
-  def genLeaf(dims: (Int,Int)): Stream[Literal] = {
+  def genLeaf(dims: (Long,Long)): Stream[Literal] = {
   	val (rows, cols) = dims
   	val sparGen = Gen.choose(0.0f, 1.0f)
   	val sparsity = sparGen.sample.get
@@ -189,7 +189,7 @@ class TestPrototype extends FunSuite with Checkers {
    * used in building optimized plans -- this is checked in the tests below.
    * @return (resulting cost, dimensions, sparsity)
    */
-  def evaluate(mf: MatrixFormula): (Double, (Int, Int), Float) = {
+  def evaluate(mf: MatrixFormula): (Double, (Long, Long), Double) = {
     mf match {
       case element: Literal => (0.0, element.dimensions, element.sparsity)
       case Sum(left, right) => {
