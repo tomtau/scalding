@@ -3,6 +3,7 @@ import scala.collection.mutable.HashMap
 import com.twitter.scalding.mathematics.NoClue
 import com.twitter.scalding.mathematics.SizeHint
 import com.twitter.scalding.mathematics.SparseHint
+import com.twitter.scalding.mathematics.FiniteHint
 
 object Prototype {
 
@@ -17,20 +18,20 @@ object Prototype {
   }
   case class Literal(override val sizeHint: SizeHint) extends MatrixFormula
 
-  def optimizeProductChain(p: IndexedSeq[Literal]): (Double, MatrixFormula) = {
+  def optimizeProductChain(p: IndexedSeq[Literal]): (Long, MatrixFormula) = {
 
-    val subchainCosts = HashMap.empty[(Int,Int), Double]
+    val subchainCosts = HashMap.empty[(Int,Int), Long]
 
     val splitMarkers = HashMap.empty[(Int,Int), Int]
 
-    def computeCosts(p: IndexedSeq[Literal], i: Int, j: Int): Double = {
+    def computeCosts(p: IndexedSeq[Literal], i: Int, j: Int): Long = {
       if (subchainCosts.contains((i,j))) subchainCosts((i,j))
       if (i == j) subchainCosts.put((i,j), 0)
       else {
-        subchainCosts.put((i,j), Double.MaxValue)
+        subchainCosts.put((i,j), Long.MaxValue)
         for (k <- i to (j - 1)) {
           val cost = computeCosts(p, i, k) + computeCosts(p, k + 1, j) +
-        		  	(p(i).sizeHint * p(k).sizeHint * p(j).sizeHint).total.get
+          (p(i).sizeHint * (p(k).sizeHint * p(j).sizeHint)).total.get
           if (cost < subchainCosts((i,j))) {
             subchainCosts.put((i,j), cost)
             splitMarkers.put((i,j), k)
@@ -41,20 +42,21 @@ object Prototype {
       subchainCosts((i,j))
     }
 
-    def generatePlan(i: Int, j: Int): MatrixFormula = {
-      if (i == j) p(i)
+    def generatePlan(i: Int, j: Int): (Long, MatrixFormula) = {
+      if (i == j) (0, p(i))
       else {
         val k = splitMarkers((i,j))
-        val X = generatePlan(i, k)
-        val Y = generatePlan(k + 1, j)
-        Product(X, Y)
+        val (costL, left) = generatePlan(i, k)
+        val (costR, right) = generatePlan(k + 1, j)
+        val result = Product(left, right)
+        (costL + costR +result.sizeHint.total.get, result)
       }
 
     }
 
-    val best = computeCosts(p, 0, p.length - 1)
+    computeCosts(p, 0, p.length - 1)
 
-    (best, generatePlan(0, p.length - 1))
+    generatePlan(0, p.length - 1)
   }
 
   def matrixFormulaToChains(mf: MatrixFormula): List[IndexedSeq[Literal]] = {

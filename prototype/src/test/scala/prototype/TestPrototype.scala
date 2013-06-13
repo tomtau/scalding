@@ -82,7 +82,7 @@ class TestPrototype extends FunSuite with Checkers {
   val optimizedPlan = Product( Product( Literal(FiniteHint(30, 35)), Product( Literal(FiniteHint(35, 15)), Literal(FiniteHint(15, 5)))),
          Product( Product( Literal(FiniteHint(5, 10)), Literal(FiniteHint(10, 20))), Literal(FiniteHint(20, 25))))
 
-  val optimizedPlanCost = 1300.0 //15125.0
+  val optimizedPlanCost = 1300 //15125.0
 
   // A1(A2(A3(A4(A5 A6))))
   val unoptimizedPlan = Product(Literal(FiniteHint(30, 35)), 
@@ -96,7 +96,7 @@ class TestPrototype extends FunSuite with Checkers {
 
   val simplePlan = Product(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 25)))
 
-  val simplePlanCost = simplePlan.sizeHint.total.get //26250
+  val simplePlanCost = 750 //26250
 
   val combinedUnoptimizedPlan = Sum(unoptimizedPlan, simplePlan)
   
@@ -245,7 +245,17 @@ class TestPrototype extends FunSuite with Checkers {
 
   test("scalacheck: testing costs of optimized plans versus random plans") {
     check((a: MatrixFormula) => optimize(a)._1 <= evaluate(a)._1)
-  }   
+  }
 
+  test("optimizing a strange random chain (that had a better cost)") {
+    val chain = Vector(Literal(SparseHint(0.36482271552085876,940,325)), Literal(SparseHint(0.9494419097900391,325,545)), Literal(SparseHint(0.41427478194236755,545,206)), Literal(SparseHint(0.0032255554106086493,206,587)))
+    val randomPlan = generateRandomPlan(0, chain.length - 1, chain)
+    expect(true)(optimizeProductChain(chain)._1 <= evaluate(randomPlan)._1)
+  }
+  
+  test("optimizing a strange random plan (that had a better cost)") {
+    val plan = Product(Product(Product(Product(Literal(SparseHint(0.15971194207668304,431,363)),Literal(SparseHint(0.7419577240943909,363,728))),Product(Literal(SparseHint(0.7982533574104309,728,667)),Literal(SparseHint(1.9173489999957383E-4,667,677)))),Product(Literal(SparseHint(0.08173704147338867,677,493)),Literal(SparseHint(0.6515133380889893,493,623)))),Product(Literal(SparseHint(0.13034720718860626,623,450)),Product(Product(Literal(SparseHint(0.5519505739212036,450,496)),Literal(SparseHint(0.011094188317656517,496,478))),Literal(SparseHint(0.21135291457176208,478,692)))))
+    expect(true)(optimize(plan)._1 <= evaluate(plan)._1)
+  }
   
 }
