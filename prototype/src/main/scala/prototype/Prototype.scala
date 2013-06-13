@@ -42,21 +42,20 @@ object Prototype {
       subchainCosts((i,j))
     }
 
-    def generatePlan(i: Int, j: Int): (Long, MatrixFormula) = {
-      if (i == j) (0, p(i))
+    def generatePlan(i: Int, j: Int): MatrixFormula = {
+      if (i == j) p(i)
       else {
         val k = splitMarkers((i,j))
-        val (costL, left) = generatePlan(i, k)
-        val (costR, right) = generatePlan(k + 1, j)
-        val result = Product(left, right)
-        (costL + costR +result.sizeHint.total.get, result)
+        val left = generatePlan(i, k)
+        val right = generatePlan(k + 1, j)
+        Product(left, right)
       }
 
     }
 
-    computeCosts(p, 0, p.length - 1)
+    val best = computeCosts(p, 0, p.length - 1)
 
-    generatePlan(0, p.length - 1)
+    (best, generatePlan(0, p.length - 1))
   }
 
   def matrixFormulaToChains(mf: MatrixFormula): List[IndexedSeq[Literal]] = {

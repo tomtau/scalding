@@ -196,23 +196,86 @@ class TestPrototype extends FunSuite with Checkers {
    * a cost <= a randomized plan.
    * The cost estimation of this evaluation should return the same values as the one
    * used in building optimized plans -- this is checked in the tests below.
-   * @return (resulting cost, SizeHint)
+   * @return resulting cost
    */
-  def evaluate(mf: MatrixFormula): (Double, SizeHint) = {
-    mf match {
-      case element: Literal => (0.0, element.sizeHint)
-      case Sum(left, right) => {
-        val (costL, leftHint) = evaluate(left)
-        val (costR, rightHint) = evaluate(right)
-        (costL + costR, leftHint + rightHint)
+  def evaluate(mf: MatrixFormula): Long = {
+    
+    /**
+     * This function strips off the formula into a list of independent product chains
+     * (i.e. same as matrixFormulaToChains in Prototype, but has Products
+     * instead of IndexedSeq[Literal])
+     */
+    def toProducts(mf: MatrixFormula): (Option[Product], List[Product]) = {
+      mf match {
+        case element: Literal => (None, Nil)
+        case Sum(left, right) => {
+          val (lastLP, leftR) = toProducts(left)
+          val (lastRP, rightR) = toProducts(right)
+          val total = leftR ++ rightR ++ (if (lastLP.isDefined) List(lastLP.get) else Nil) ++ 
+          (if (lastRP.isDefined) List(lastRP.get) else Nil)
+          (None, total)
+        }
+        case Product(leftp: Literal, rightp: Literal) => {
+          (Some(Product(leftp, rightp)), Nil)
+        }
+        case Product(left: Product, right: Literal) => {
+          val (lastLP, leftR) = toProducts(left)
+          if (lastLP.isDefined) (Some(Product(lastLP.get, right)), leftR)
+          else (None, leftR)
+        }
+        case Product(left: Literal, right: Product) => {
+          val (lastRP, rightR) = toProducts(right)
+          if (lastRP.isDefined) (Some(Product(left, lastRP.get)), rightR)
+          else (None, rightR)
+        }
+        case Product(left, right) => {
+          val (lastLP, leftR) = toProducts(left)
+          val (lastRP, rightR) = toProducts(right)
+          if (lastLP.isDefined && lastRP.isDefined) {
+            (Some(Product(lastLP.get, lastRP.get)), leftR ++ rightR)
+          } else {
+            val newP = if (lastLP.isDefined) List(lastLP.get) else if (lastRP.isDefined) List(lastRP.get) else Nil 
+            (None, newP ++ leftR ++ rightR)
+          }
+          
+        }
       }
-      case Product(left, right) => {
-        val (costL, leftHint) = evaluate(left)
-        val (costR, rightHint) = evaluate(right)
-        val newHint = leftHint * rightHint
-        (costL + costR + newHint.total.get, newHint)
+    }    
+    
+    /**
+     * This function evaluates a product chain in the same way
+     * as the dynamic programming procedure computes cost
+     * (optimizeProductChain - computeCosts in Prototype)
+     */
+    def evaluateProduct(p: Product): Option[(Long, MatrixFormula, MatrixFormula)] = {
+      p match {
+        case Product(left: Literal, right: Literal) => {
+          Some((left.sizeHint * (left.sizeHint * right.sizeHint)).total.get,
+              left, right)
+        }
+        case Product(left: Literal, right: Product) => {
+          val (cost, pLeft, pRight) = evaluateProduct(right).get
+          Some(cost + (left.sizeHint * (left.sizeHint * pRight.sizeHint)).total.get,
+              left, pRight)
+        }
+        case Product(left: Product, right: Literal) => {
+          val (cost, pLeft, pRight) = evaluateProduct(left).get
+          Some(cost + (pLeft.sizeHint * (pRight.sizeHint * right.sizeHint)).total.get,
+              pLeft, right)
+        }
+        case Product(left: Product, right: Product) => {
+          val (cost1, p1Left, p1Right) = evaluateProduct(left).get
+          val (cost2, p2Left, p2Right) = evaluateProduct(right).get
+          Some(cost1 + cost2 + (p1Left.sizeHint * (p1Right.sizeHint * p2Right.sizeHint)).total.get,
+              p1Left, p2Right)
+        }
+        case _ => None
       }
     }
+    
+    val (last, productList) = toProducts(mf)
+    val products = if (last.isDefined) last.get :: productList else productList
+    products.map(p => evaluateProduct(p).get._1).sum
   }
     
   /**
@@ -220,19 +283,19 @@ class TestPrototype extends FunSuite with Checkers {
    * the same overall costs as what is estimated in the optimization procedure 
    */
   test("evaluate returns correct cost for an optimized plan") {
-    expect((optimizedPlanCost, optimizedPlan.sizeHint)) {evaluate(optimizedPlan)}
+    expect(optimizedPlanCost) {evaluate(optimizedPlan)}
   }
 
   test("evaluate returns correct cost for a simple plan") {
-    expect((simplePlanCost, simplePlan.sizeHint)) {evaluate(simplePlan)}
+    expect(simplePlanCost) {evaluate(simplePlan)}
   }
   
   test("evaluate returns correct cost for a combined optimized plan") {
-    expect((combinedOptimizedPlanCost, combinedOptimizedPlan.sizeHint)) {evaluate(combinedOptimizedPlan)}
+    expect(combinedOptimizedPlanCost) {evaluate(combinedOptimizedPlan)}
   }
   
   test("scalacheck: testing evaluate") {
-    check((a: MatrixFormula) => optimize(a)._1 == evaluate(optimize(a)._2)._1)
+    check((a: MatrixFormula) => optimize(a)._1 == evaluate(optimize(a)._2))
   }  
 
   /**
@@ -240,22 +303,27 @@ class TestPrototype extends FunSuite with Checkers {
    * are less than or equal to costs of randomized equivalent plans or product chains
    */
   test("scalacheck: testing costs of optimized chains") {
-    check((a: IndexedSeq[Literal]) => optimizeProductChain(a)._1 <= evaluate(generateRandomPlan(0, a.length - 1, a))._1)
+    check((a: IndexedSeq[Literal]) => optimizeProductChain(a)._1 <= evaluate(generateRandomPlan(0, a.length - 1, a)))
   }   
 
   test("scalacheck: testing costs of optimized plans versus random plans") {
-    check((a: MatrixFormula) => optimize(a)._1 <= evaluate(a)._1)
+    check((a: MatrixFormula) => optimize(a)._1 <= evaluate(a))
   }
 
   test("optimizing a strange random chain (that had a better cost)") {
     val chain = Vector(Literal(SparseHint(0.36482271552085876,940,325)), Literal(SparseHint(0.9494419097900391,325,545)), Literal(SparseHint(0.41427478194236755,545,206)), Literal(SparseHint(0.0032255554106086493,206,587)))
     val randomPlan = generateRandomPlan(0, chain.length - 1, chain)
-    expect(true)(optimizeProductChain(chain)._1 <= evaluate(randomPlan)._1)
+    expect(true)(optimizeProductChain(chain)._1 <= evaluate(randomPlan))
+  }
+  
+  test("optimizing a simplified plan from the above strange random chain (that had a better cost)") {
+    val plan = Product(Product(Literal(SparseHint(0.4,900,30)),Product(Literal(SparseHint(1.0,30,50)),Literal(SparseHint(0.4,50,200)))),Literal(SparseHint(0.0003,200,500)))
+    expect(true)(optimize(plan)._1 <= evaluate(plan))
   }
   
   test("optimizing a strange random plan (that had a better cost)") {
     val plan = Product(Product(Product(Product(Literal(SparseHint(0.15971194207668304,431,363)),Literal(SparseHint(0.7419577240943909,363,728))),Product(Literal(SparseHint(0.7982533574104309,728,667)),Literal(SparseHint(1.9173489999957383E-4,667,677)))),Product(Literal(SparseHint(0.08173704147338867,677,493)),Literal(SparseHint(0.6515133380889893,493,623)))),Product(Literal(SparseHint(0.13034720718860626,623,450)),Product(Product(Literal(SparseHint(0.5519505739212036,450,496)),Literal(SparseHint(0.011094188317656517,496,478))),Literal(SparseHint(0.21135291457176208,478,692)))))
-    expect(true)(optimize(plan)._1 <= evaluate(plan)._1)
+    expect(true)(optimize(plan)._1 <= evaluate(plan))
   }
   
 }
