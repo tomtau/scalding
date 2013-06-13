@@ -5,18 +5,18 @@ import org.scalatest.prop.Checkers
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Prop._
 import org.scalacheck._
-
 import org.scalacheck.Gen._
-
-
 import prototype.Prototype._
+import com.twitter.scalding.mathematics.SparseHint
+import com.twitter.scalding.mathematics.FiniteHint
+import com.twitter.scalding.mathematics.SizeHint
 
 class TestPrototype extends FunSuite with Checkers {
 
   /**
    * Helper methods used in tests for randomized generations
    */
-  def genLeaf(dims: (Long,Long)): Stream[Literal] = {
+  def genLeaf(dims: (Long,Long)): (Literal, Long) = {
   	val (rows, cols) = dims
   	val sparGen = Gen.choose(0.0f, 1.0f)
   	val sparsity = sparGen.sample.get
@@ -25,17 +25,26 @@ class TestPrototype extends FunSuite with Checkers {
   	if (cols <= 0) {
   		val colGen = Gen.choose(1, 1000)
   		val nextCols = colGen.sample.get
-  		Literal((nextRows, nextCols), sparsity) #:: genLeaf((nextCols, 0))
+  		(Literal(SparseHint(sparsity, nextRows, nextCols)), nextCols)
   	} else {
-  		Stream(Literal((nextRows, cols), sparsity))
+  		(Literal(SparseHint(sparsity, nextRows, cols)), cols)
   	}
   }
 
+  def productChainGen(current: Int, target: Int, prevCol: Long, result: List[Literal]): List[Literal] = {
+    if (current == target) result
+    else {
+      val (randomMatrix, cols) = genLeaf((prevCol, 0))
+      productChainGen(current + 1, target, cols, result ++ List(randomMatrix))
+    }
+  }
+  
   def randomProduct(p: Int): MatrixFormula = {
-    if (p == 1) genLeaf((5,5)).take(1)(0)
-    val left = genLeaf((5,0)).take(p).toIndexedSeq
-    val full = left ++ genLeaf((left.last.dimensions._2, 5)).toIndexedSeq
-    generateRandomPlan(0, full.size - 1, full)
+    if (p == 1) genLeaf((0,0))._1
+    else {
+      val full = productChainGen(0, p, 0, Nil).toIndexedSeq
+      generateRandomPlan(0, full.size - 1, full)
+    }
   }
   
   val genNode = for {
@@ -45,13 +54,13 @@ class TestPrototype extends FunSuite with Checkers {
     right <- genFormula
   } yield if (v > 0) randomProduct(p) else Sum(left, right)
 
-  def genFormula: Gen[MatrixFormula] = oneOf(genNode, genLeaf((5,5)).take(1).head)  
+  def genFormula: Gen[MatrixFormula] = oneOf(genNode, genLeaf((0,0))._1)  
   
   implicit def arbT: Arbitrary[MatrixFormula] = Arbitrary(genFormula)
 
   val genProdSeq = for {
     v <- Gen.choose(1, 10)
-  } yield genLeaf((0,0)).take(v).toIndexedSeq
+  } yield productChainGen(0, v, 0, Nil).toIndexedSeq
 
   implicit def arbSeq: Arbitrary[IndexedSeq[Literal]] = Arbitrary(genProdSeq)
   
@@ -70,24 +79,24 @@ class TestPrototype extends FunSuite with Checkers {
    * Values used in tests
    */
   // ((A1(A2 A3))((A4 A5) A6)
-  val optimizedPlan = Product( Product( Literal((30, 35), 1.0f), Product( Literal((35, 15), 1.0f), Literal((15, 5), 1.0f))),
-         Product( Product( Literal((5, 10), 1.0f), Literal((10, 20), 1.0f)), Literal((20, 25), 1.0f)))
+  val optimizedPlan = Product( Product( Literal(FiniteHint(30, 35)), Product( Literal(FiniteHint(35, 15)), Literal(FiniteHint(15, 5)))),
+         Product( Product( Literal(FiniteHint(5, 10)), Literal(FiniteHint(10, 20))), Literal(FiniteHint(20, 25))))
 
-  val optimizedPlanCost = 15125.0
+  val optimizedPlanCost = 1300.0 //15125.0
 
   // A1(A2(A3(A4(A5 A6))))
-  val unoptimizedPlan = Product(Literal((30, 35), 1.0f), 
-      Product(Literal((35, 15), 1.0f),
-          Product(Literal((15, 5), 1.0f),
-              Product(Literal((5, 10), 1.0f),
-                  Product(Literal((10, 20), 1.0f), Literal((20, 25), 1.0f))
+  val unoptimizedPlan = Product(Literal(FiniteHint(30, 35)), 
+      Product(Literal(FiniteHint(35, 15)),
+          Product(Literal(FiniteHint(15, 5)),
+              Product(Literal(FiniteHint(5, 10)),
+                  Product(Literal(FiniteHint(10, 20)), Literal(FiniteHint(20, 25)))
               )
           )
       ))
 
-  val simplePlan = Product(Literal((30, 35), 1.0f), Literal((35, 25), 1.0f))
+  val simplePlan = Product(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 25)))
 
-  val simplePlanCost = 26250
+  val simplePlanCost = simplePlan.sizeHint.total.get //26250
 
   val combinedUnoptimizedPlan = Sum(unoptimizedPlan, simplePlan)
   
@@ -95,25 +104,25 @@ class TestPrototype extends FunSuite with Checkers {
   
   val combinedOptimizedPlanCost = optimizedPlanCost + simplePlanCost
   
-  val productSequence = IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
-        Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
-        Literal((20, 25), 1.0f))
+  val productSequence = IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 15)),
+        Literal(FiniteHint(15, 5)), Literal(FiniteHint(5, 10)), Literal(FiniteHint(10, 20)),
+        Literal(FiniteHint(20, 25)))
 
-  val combinedSequence = List(IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 15), 1.0f),
-        Literal((15, 5), 1.0f), Literal((5, 10), 1.0f), Literal((10, 20), 1.0f),
-        Literal((20, 25), 1.0f)), IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 25), 1.0f)))   
+  val combinedSequence = List(IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 15)),
+        Literal(FiniteHint(15, 5)), Literal(FiniteHint(5, 10)), Literal(FiniteHint(10, 20)),
+        Literal(FiniteHint(20, 25))), IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 25))))   
 
   /**
    * Basic "weak" test cases used in development
    */
   test("base case") {
-    val p = IndexedSeq(Literal((30, 35), 1.0f))
+    val p = IndexedSeq(Literal(FiniteHint(30, 35)))
     val result = optimizeProductChain(p)
-    expect((0.0, Literal((30, 35), 1.0f))) {result}
+    expect((0.0, Literal(FiniteHint(30, 35)))) {result}
   }  
   
   test("only two matrices") {
-    val p = IndexedSeq(Literal((30, 35), 1.0f), Literal((35, 25), 1.0f))
+    val p = IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 25)))
     val result = optimizeProductChain(p)
     expect((simplePlanCost, simplePlan)) {result}
   }
@@ -187,21 +196,21 @@ class TestPrototype extends FunSuite with Checkers {
    * a cost <= a randomized plan.
    * The cost estimation of this evaluation should return the same values as the one
    * used in building optimized plans -- this is checked in the tests below.
-   * @return (resulting cost, dimensions, sparsity)
+   * @return (resulting cost, SizeHint)
    */
-  def evaluate(mf: MatrixFormula): (Double, (Long, Long), Double) = {
+  def evaluate(mf: MatrixFormula): (Double, SizeHint) = {
     mf match {
-      case element: Literal => (0.0, element.dimensions, element.sparsity)
+      case element: Literal => (0.0, element.sizeHint)
       case Sum(left, right) => {
-        val (costL, dimL, sparsL) = evaluate(left)
-        val (costR, dimR, sparsR) = evaluate(right)
-        (costL + costR, dimR, sparsL.max(sparsR))
+        val (costL, leftHint) = evaluate(left)
+        val (costR, rightHint) = evaluate(right)
+        (costL + costR, leftHint + rightHint)
       }
       case Product(left, right) => {
-        val (costL, (rowsL, colsL), sparsL) = evaluate(left)
-        val (costR, (rowsR, colsR), sparsR) = evaluate(right)
-        (costL + costR + (rowsL * colsL * colsR * sparsL.max(sparsR)),
-            (rowsL,colsR), sparsL.max(sparsR))
+        val (costL, leftHint) = evaluate(left)
+        val (costR, rightHint) = evaluate(right)
+        val newHint = leftHint * rightHint
+        (costL + costR + newHint.total.get, newHint)
       }
     }
   }
@@ -211,15 +220,15 @@ class TestPrototype extends FunSuite with Checkers {
    * the same overall costs as what is estimated in the optimization procedure 
    */
   test("evaluate returns correct cost for an optimized plan") {
-    expect((optimizedPlanCost, (30,25), 1.0f)) {evaluate(optimizedPlan)}
+    expect((optimizedPlanCost, optimizedPlan.sizeHint)) {evaluate(optimizedPlan)}
   }
 
   test("evaluate returns correct cost for a simple plan") {
-    expect((simplePlanCost, (30,25), 1.0f)) {evaluate(simplePlan)}
+    expect((simplePlanCost, simplePlan.sizeHint)) {evaluate(simplePlan)}
   }
   
   test("evaluate returns correct cost for a combined optimized plan") {
-    expect((combinedOptimizedPlanCost, (30,25), 1.0f)) {evaluate(combinedOptimizedPlan)}
+    expect((combinedOptimizedPlanCost, combinedOptimizedPlan.sizeHint)) {evaluate(combinedOptimizedPlan)}
   }
   
   test("scalacheck: testing evaluate") {

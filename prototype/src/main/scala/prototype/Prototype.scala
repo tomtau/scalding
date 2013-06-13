@@ -15,9 +15,7 @@ object Prototype {
   case class Sum(left: MatrixFormula, right: MatrixFormula) extends MatrixFormula {
     override val sizeHint = left.sizeHint + right.sizeHint
   }
-  case class Literal(dimensions: (Long, Long), sparsity: Double) extends MatrixFormula {
-    override val sizeHint = SparseHint(sparsity, dimensions._1, dimensions._2)
-  }
+  case class Literal(override val sizeHint: SizeHint) extends MatrixFormula
 
   def optimizeProductChain(p: IndexedSeq[Literal]): (Double, MatrixFormula) = {
 
@@ -25,26 +23,14 @@ object Prototype {
 
     val splitMarkers = HashMap.empty[(Int,Int), Int]
 
-    def max(one: Float, two: Float, three: Float): Float = {
-      if (one > two) {
-        if (one > three) one else three
-      } else {
-        if (two > three) two else three
-      }
-    }
-
-    val sparsities = p.map(x => x.sparsity)
-
     def computeCosts(p: IndexedSeq[Literal], i: Int, j: Int): Double = {
       if (subchainCosts.contains((i,j))) subchainCosts((i,j))
       if (i == j) subchainCosts.put((i,j), 0)
       else {
         subchainCosts.put((i,j), Double.MaxValue)
         for (k <- i to (j - 1)) {
-          val ((rowsI, colsI), (rowsJ, colsJ)) = (p(i).dimensions, p(j).dimensions)
           val cost = computeCosts(p, i, k) + computeCosts(p, k + 1, j) +
-                     rowsI * p(k).dimensions._2 * colsJ * sparsities.slice(i, j + 1).max
-                     //max(p(i).sparsity, p(k).sparsity, p(j).sparsity)
+        		  	(p(i).sizeHint * p(k).sizeHint * p(j).sizeHint).total.get
           if (cost < subchainCosts((i,j))) {
             subchainCosts.put((i,j), cost)
             splitMarkers.put((i,j), k)
