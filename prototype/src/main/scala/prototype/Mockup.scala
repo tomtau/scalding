@@ -22,9 +22,9 @@ object Mockup {
         keyL <- left.view
         keyR <- right.view.transpose
       } yield (keyL, keyR)).zipWithIndex.groupBy(row => row._2 / left.size).toSeq.sortBy(a => a._1). // get joined row-cols in order
-        map(x => x._2 map (y => y._1) map (z => (z._1 zip z._2) // strip off indices and zip entry elements
-        map (els => ring.times(els._1, els._2)) // pairwise multiplication
-        reduce ((el1, el2) => ring.plus(el1, el2)))) // sum products to the resulting element
+        map(x => x._2.map(y => y._1).map(z => (z._1 zip z._2). // strip off indices and zip entry elements
+        map(els => ring.times(els._1, els._2)). // pairwise multiplication
+        reduce((el1, el2) => ring.plus(el1, el2)))). // sum products to the resulting element
         toList
     }
   }
