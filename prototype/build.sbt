@@ -2,7 +2,7 @@ name := "prototype"
 
 version := "1.0"
 
-scalaVersion := "2.9.3"
+scalaVersion := "2.9.2"
 
 org.scalastyle.sbt.ScalastylePlugin.Settings
 
@@ -13,5 +13,6 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.scalacheck" %% "scalacheck" % "1.10.1" % "test",
-  "org.scalatest" %% "scalatest" % "1.9.1" % "test"
+  "org.scalatest" %% "scalatest" % "1.9.1" % "test",
+  "com.twitter" %% "algebird-core" % "0.1.13" % "test"
 )
