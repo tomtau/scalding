@@ -1,6 +1,5 @@
 package prototype
 
-import com.twitter.scalding.mathematics.SparseHint
 import com.twitter.scalding.mathematics.SizeHint
 import com.twitter.scalding.mathematics.NoClue
 import com.twitter.algebird.{Monoid, Ring}
@@ -45,9 +44,4 @@ object Mockup {
     
     override def toList(): List[List[Double]] = vals
   }
-
-  def main(args: Array[String]): Unit = {
-
-  }
-
 }
