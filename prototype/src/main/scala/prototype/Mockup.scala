@@ -19,9 +19,17 @@ object Mockup {
     def iterator: Iterator[Iterable[Double]] = toList().iterator
     
     override def toList(): List[Iterable[Double]] = {
-      List()
-    }    
+      (for {
+        keyL <- left.view
+        keyR <- right.view.transpose
+      } yield (keyL,keyR)).zipWithIndex.groupBy(row => row._2 / left.size).toSeq.sortBy(a => a._1). // get joined row-cols in order
+      map(x => x._2.map(y => y._1).map(z => (z._1 zip z._2). // strip off indices and zip entry elements
+      map(els => ring.times(els._1,els._2)). // pairwise multiplication
+      reduce((el1,el2) => ring.plus(el1,el2)))) // sum products to the resulting element
+      .toList
+    }
   }
+  
   case class Sum(left: Matrix, right: Matrix)(implicit mon : Monoid[Double]) extends Matrix {
     override val sizeHint = left.sizeHint + right.sizeHint
 
@@ -31,6 +39,7 @@ object Mockup {
       (left.view zip right.view) map (cols => (cols._1 zip cols._2) map (x => mon.plus(x._1,x._2))) toList
     }
   }
+  
   case class Literal(override val sizeHint: SizeHint, val vals: List[List[Double]]) extends Matrix {
     def iterator: Iterator[Iterable[Double]] = vals.iterator
     
