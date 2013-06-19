@@ -33,10 +33,10 @@ class TestPrototype extends FunSuite with Checkers {
 
   val globM = matrix().sample.get
   
-	def matrix(): Gen[List[List[Double]]] = Gen.sized { size =>
+	def matrix(): Gen[List[(Int, Int, Double)]] = Gen.sized { size =>
 	  val side = scala.math.sqrt(size).asInstanceOf[Int]
 	  val g = arbitrary[Double]
-	  Gen.listOfN(side, Gen.listOfN(side, g))
+	  Gen.listOfN(side, (Gen.choose(0, 1000).sample.get,Gen.choose(0, 1000).sample.get,g.sample.get))
 	}  
   
   def productChainGen(current: Int, target: Int, prevCol: Long, result: List[Literal]): List[Literal] = {
