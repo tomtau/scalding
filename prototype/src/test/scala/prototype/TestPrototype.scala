@@ -25,12 +25,20 @@ class TestPrototype extends FunSuite with Checkers {
   	if (cols <= 0) {
   		val colGen = Gen.choose(1, 1000)
   		val nextCols = colGen.sample.get
-  		(Literal(SparseHint(sparsity, nextRows, nextCols)), nextCols)
+  		(Literal(SparseHint(sparsity, nextRows, nextCols), globM), nextCols)
   	} else {
-  		(Literal(SparseHint(sparsity, nextRows, cols)), cols)
+  		(Literal(SparseHint(sparsity, nextRows, cols), globM), cols)
   	}
   }
 
+  val globM = matrix().sample.get
+  
+	def matrix(): Gen[List[List[Double]]] = Gen.sized { size =>
+	  val side = scala.math.sqrt(size).asInstanceOf[Int]
+	  val g = arbitrary[Double]
+	  Gen.listOfN(side, Gen.listOfN(side, g))
+	}  
+  
   def productChainGen(current: Int, target: Int, prevCol: Long, result: List[Literal]): List[Literal] = {
     if (current == target) result
     else {
@@ -39,7 +47,7 @@ class TestPrototype extends FunSuite with Checkers {
     }
   }
   
-  def randomProduct(p: Int): MatrixFormula = {
+  def randomProduct(p: Int): Matrix = {
     if (p == 1) genLeaf((0,0))._1
     else {
       val full = productChainGen(0, p, 0, Nil).toIndexedSeq
@@ -54,9 +62,9 @@ class TestPrototype extends FunSuite with Checkers {
     right <- genFormula
   } yield if (v > 0) randomProduct(p) else Sum(left, right)
 
-  def genFormula: Gen[MatrixFormula] = oneOf(genNode, genLeaf((0,0))._1)  
+  def genFormula: Gen[Matrix] = oneOf(genNode, genLeaf((0,0))._1)  
   
-  implicit def arbT: Arbitrary[MatrixFormula] = Arbitrary(genFormula)
+  implicit def arbT: Arbitrary[Matrix] = Arbitrary(genFormula)
 
   val genProdSeq = for {
     v <- Gen.choose(1, 10)
@@ -64,7 +72,7 @@ class TestPrototype extends FunSuite with Checkers {
 
   implicit def arbSeq: Arbitrary[IndexedSeq[Literal]] = Arbitrary(genProdSeq)
   
-  def generateRandomPlan(i: Int, j: Int, p: IndexedSeq[Literal]): MatrixFormula = {
+  def generateRandomPlan(i: Int, j: Int, p: IndexedSeq[Literal]): Matrix = {
     if (i == j) p(i)
     else {
       val genK = Gen.choose(i, j - 1)
@@ -79,22 +87,23 @@ class TestPrototype extends FunSuite with Checkers {
    * Values used in tests
    */
   // ((A1(A2 A3))((A4 A5) A6)
-  val optimizedPlan = Product( Product( Literal(FiniteHint(30, 35)), Product( Literal(FiniteHint(35, 15)), Literal(FiniteHint(15, 5)))),
-         Product( Product( Literal(FiniteHint(5, 10)), Literal(FiniteHint(10, 20))), Literal(FiniteHint(20, 25))))
+  val optimizedPlan = Product( Product( Literal(FiniteHint(30, 35), globM),
+      Product( Literal(FiniteHint(35, 15), globM), Literal(FiniteHint(15, 5), globM))),
+         Product( Product( Literal(FiniteHint(5, 10), globM), Literal(FiniteHint(10, 20), globM)), Literal(FiniteHint(20, 25), globM)))
 
   val optimizedPlanCost = 1300 //15125.0
 
   // A1(A2(A3(A4(A5 A6))))
-  val unoptimizedPlan = Product(Literal(FiniteHint(30, 35)), 
-      Product(Literal(FiniteHint(35, 15)),
-          Product(Literal(FiniteHint(15, 5)),
-              Product(Literal(FiniteHint(5, 10)),
-                  Product(Literal(FiniteHint(10, 20)), Literal(FiniteHint(20, 25)))
+  val unoptimizedPlan = Product(Literal(FiniteHint(30, 35), globM), 
+      Product(Literal(FiniteHint(35, 15), globM),
+          Product(Literal(FiniteHint(15, 5), globM),
+              Product(Literal(FiniteHint(5, 10), globM),
+                  Product(Literal(FiniteHint(10, 20), globM), Literal(FiniteHint(20, 25), globM))
               )
           )
       ))
 
-  val simplePlan = Product(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 25)))
+  val simplePlan = Product(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 25), globM))
 
   val simplePlanCost = 750 //26250
 
@@ -104,25 +113,26 @@ class TestPrototype extends FunSuite with Checkers {
   
   val combinedOptimizedPlanCost = optimizedPlanCost + simplePlanCost
   
-  val productSequence = IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 15)),
-        Literal(FiniteHint(15, 5)), Literal(FiniteHint(5, 10)), Literal(FiniteHint(10, 20)),
-        Literal(FiniteHint(20, 25)))
+  val productSequence = IndexedSeq(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 15), globM),
+        Literal(FiniteHint(15, 5), globM), Literal(FiniteHint(5, 10), globM), Literal(FiniteHint(10, 20), globM),
+        Literal(FiniteHint(20, 25), globM))
 
-  val combinedSequence = List(IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 15)),
-        Literal(FiniteHint(15, 5)), Literal(FiniteHint(5, 10)), Literal(FiniteHint(10, 20)),
-        Literal(FiniteHint(20, 25))), IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 25))))   
+  val combinedSequence = List(IndexedSeq(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 15), globM),
+        Literal(FiniteHint(15, 5), globM), Literal(FiniteHint(5, 10), globM), Literal(FiniteHint(10, 20), globM),
+        Literal(FiniteHint(20, 25), globM)), IndexedSeq(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 25), globM)))   
 
   /**
    * Basic "weak" test cases used in development
    */
   test("base case") {
-    val p = IndexedSeq(Literal(FiniteHint(30, 35)))
+    val m = globM
+    val p = IndexedSeq(Literal(FiniteHint(30, 35), m))
     val result = optimizeProductChain(p)
-    expect((0.0, Literal(FiniteHint(30, 35)))) {result}
+    expect((0.0, Literal(FiniteHint(30, 35), m))) {result}
   }  
   
   test("only two matrices") {
-    val p = IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 25)))
+    val p = IndexedSeq(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 25), globM))
     val result = optimizeProductChain(p)
     expect((simplePlanCost, simplePlan)) {result}
   }
@@ -187,7 +197,7 @@ class TestPrototype extends FunSuite with Checkers {
    * Sanity check
    */
   test("scalacheck: optimizing an optimized plan does not change it") {
-    check((a: MatrixFormula) => optimize(a) == optimize(optimize(a)._2))
+    check((a: Matrix) => optimize(a) == optimize(optimize(a)._2))
   }
 
   /**
@@ -198,14 +208,14 @@ class TestPrototype extends FunSuite with Checkers {
    * used in building optimized plans -- this is checked in the tests below.
    * @return resulting cost
    */
-  def evaluate(mf: MatrixFormula): Long = {
+  def evaluate(mf: Matrix): Long = {
     
     /**
      * This function strips off the formula into a list of independent product chains
      * (i.e. same as matrixFormulaToChains in Prototype, but has Products
      * instead of IndexedSeq[Literal])
      */
-    def toProducts(mf: MatrixFormula): (Option[Product], List[Product]) = {
+    def toProducts(mf: Matrix): (Option[Product], List[Product]) = {
       mf match {
         case element: Literal => (None, Nil)
         case Sum(left, right) => {
@@ -247,7 +257,7 @@ class TestPrototype extends FunSuite with Checkers {
      * as the dynamic programming procedure computes cost
      * (optimizeProductChain - computeCosts in Prototype)
      */
-    def evaluateProduct(p: Product): Option[(Long, MatrixFormula, MatrixFormula)] = {
+    def evaluateProduct(p: Product): Option[(Long, Matrix, Matrix)] = {
       p match {
         case Product(left: Literal, right: Literal) => {
           Some((left.sizeHint * (left.sizeHint * right.sizeHint)).total.get,
@@ -295,7 +305,7 @@ class TestPrototype extends FunSuite with Checkers {
   }
   
   test("scalacheck: testing evaluate") {
-    check((a: MatrixFormula) => optimize(a)._1 == evaluate(optimize(a)._2))
+    check((a: Matrix) => optimize(a)._1 == evaluate(optimize(a)._2))
   }  
 
   /**
@@ -307,22 +317,22 @@ class TestPrototype extends FunSuite with Checkers {
   }   
 
   test("scalacheck: testing costs of optimized plans versus random plans") {
-    check((a: MatrixFormula) => optimize(a)._1 <= evaluate(a))
+    check((a: Matrix) => optimize(a)._1 <= evaluate(a))
   }
 
   test("optimizing a strange random chain (that had a better cost)") {
-    val chain = Vector(Literal(SparseHint(0.36482271552085876,940,325)), Literal(SparseHint(0.9494419097900391,325,545)), Literal(SparseHint(0.41427478194236755,545,206)), Literal(SparseHint(0.0032255554106086493,206,587)))
+    val chain = Vector(Literal(SparseHint(0.36482271552085876,940,325), globM), Literal(SparseHint(0.9494419097900391,325,545), globM), Literal(SparseHint(0.41427478194236755,545,206), globM), Literal(SparseHint(0.0032255554106086493,206,587), globM))
     val randomPlan = generateRandomPlan(0, chain.length - 1, chain)
     expect(true)(optimizeProductChain(chain)._1 <= evaluate(randomPlan))
   }
   
   test("optimizing a simplified plan from the above strange random chain (that had a better cost)") {
-    val plan = Product(Product(Literal(SparseHint(0.4,900,30)),Product(Literal(SparseHint(1.0,30,50)),Literal(SparseHint(0.4,50,200)))),Literal(SparseHint(0.0003,200,500)))
+    val plan = Product(Product(Literal(SparseHint(0.4,900,30), globM),Product(Literal(SparseHint(1.0,30,50), globM),Literal(SparseHint(0.4,50,200), globM))),Literal(SparseHint(0.0003,200,500), globM))
     expect(true)(optimize(plan)._1 <= evaluate(plan))
   }
   
   test("optimizing a strange random plan (that had a better cost)") {
-    val plan = Product(Product(Product(Product(Literal(SparseHint(0.15971194207668304,431,363)),Literal(SparseHint(0.7419577240943909,363,728))),Product(Literal(SparseHint(0.7982533574104309,728,667)),Literal(SparseHint(1.9173489999957383E-4,667,677)))),Product(Literal(SparseHint(0.08173704147338867,677,493)),Literal(SparseHint(0.6515133380889893,493,623)))),Product(Literal(SparseHint(0.13034720718860626,623,450)),Product(Product(Literal(SparseHint(0.5519505739212036,450,496)),Literal(SparseHint(0.011094188317656517,496,478))),Literal(SparseHint(0.21135291457176208,478,692)))))
+    val plan = Product(Product(Product(Product(Literal(SparseHint(0.15971194207668304,431,363), globM),Literal(SparseHint(0.7419577240943909,363,728), globM)),Product(Literal(SparseHint(0.7982533574104309,728,667), globM),Literal(SparseHint(1.9173489999957383E-4,667,677), globM))),Product(Literal(SparseHint(0.08173704147338867,677,493), globM),Literal(SparseHint(0.6515133380889893,493,623), globM))),Product(Literal(SparseHint(0.13034720718860626,623,450), globM),Product(Product(Literal(SparseHint(0.5519505739212036,450,496), globM),Literal(SparseHint(0.011094188317656517,496,478), globM)),Literal(SparseHint(0.21135291457176208,478,692), globM))))
     expect(true)(optimize(plan)._1 <= evaluate(plan))
   }
   
