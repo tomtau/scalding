@@ -31,7 +31,10 @@ object Prototype {
     def iterator: Iterator[(Int, Int, Double)] = toList().iterator
 
     override def toList(): List[(Int, Int, Double)] = {
-      List()
+		(left.view ++ right.view).groupBy(entry => (entry._1, entry._2)).toSeq.sortBy(entry => entry._1). // group entries
+			map(joined => if (joined._2.size == 1) joined._2.head // sum or leave
+				else (joined._2.head._1, joined._2.head._2, mon.plus(joined._2.head._3, joined._2.tail.head._3))).
+				toList
     }
   }
 
