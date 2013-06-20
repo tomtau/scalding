@@ -58,26 +58,6 @@ object Prototype {
     (best, generatePlan(0, p.length - 1))
   }
 
-  def matrixFormulaToChains(mf: MatrixFormula): List[IndexedSeq[Literal]] = {
-
-    def unflatten(result: List[Literal]): List[List[Literal]] = {
-      if (result.isEmpty) Nil
-      else List(result)
-    }
-
-    def toProductChains(mf: MatrixFormula, result: List[Literal]): List[List[Literal]] = {
-      mf match {
-        case element: Literal => List(result ::: List(element))
-        case Sum(left, right) => unflatten(result) ++ (toProductChains(left, Nil) ++ toProductChains(right, Nil))
-        case Product(leftp, rightp) => {
-          val left = toProductChains(leftp, result)
-          left.slice(0, left.length - 2) ++ toProductChains(rightp, left.last)
-        }
-      }
-    }
-    toProductChains(mf, Nil).map(a => a.toIndexedSeq)
-  }
-
   def matrixFormulaOptimize(mf: MatrixFormula): (Long, MatrixFormula) = {
 		
 		def chainOrLast(chain: List[Literal], last: Option[(Long, MatrixFormula)]): (Long, MatrixFormula) = {

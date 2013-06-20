@@ -134,40 +134,6 @@ class TestPrototype extends FunSuite with Checkers {
 
     expect((optimizedPlanCost, optimizedPlan)) {result}
   }
-
-  test("optimized matrix formula to a sequence") {
-    val result = matrixFormulaToChains(optimizedPlan).head
-    expect(productSequence.length) {result.length}
-    for {
-      i <- 0 to (productSequence.length - 1)
-    } yield expect(productSequence(i)) {result(i)}    
-  }
-
-  test("unoptimized matrix formula to a sequence") {
-    val result = matrixFormulaToChains(unoptimizedPlan).head
-    expect(productSequence.length) {result.length}
-    for {
-      i <- 0 to (productSequence.length - 1)
-    } yield expect(productSequence(i)) {result(i)}  
-  }
-
-  test("optimized sum matrix formula to a sequence") {
-    val result = matrixFormulaToChains(combinedOptimizedPlan)
-    expect(combinedSequence.length) {result.length}
-    for {
-      i <- 0 to (combinedSequence.length - 1)
-      j <- 0 to (combinedSequence(i).length - 1)
-    } yield expect(combinedSequence(i)(j)) {result(i)(j)}    
-  }
-
-  test("unoptimized sum matrix formula to a sequence") {
-    val result = matrixFormulaToChains(combinedUnoptimizedPlan)
-    expect(combinedSequence.length) {result.length}
-    for {
-      i <- 0 to (combinedSequence.length - 1)
-      j <- 0 to (combinedSequence(i).length - 1)
-    } yield expect(combinedSequence(i)(j)) {result(i)(j)}    
-  }
   
   test("optimizing an optimized plan") {
     expect((optimizedPlanCost, optimizedPlan)) {optimize(optimizedPlan)}
