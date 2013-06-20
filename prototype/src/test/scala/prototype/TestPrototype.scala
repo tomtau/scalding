@@ -112,6 +112,8 @@ class TestPrototype extends FunSuite with Checkers {
         Literal(FiniteHint(15, 5)), Literal(FiniteHint(5, 10)), Literal(FiniteHint(10, 20)),
         Literal(FiniteHint(20, 25))), IndexedSeq(Literal(FiniteHint(30, 35)), Literal(FiniteHint(35, 25))))   
 
+  val planWithSum = Product(Literal(FiniteHint(30, 35)), Sum(Literal(FiniteHint(35, 25)), Literal(FiniteHint(35, 25))))
+        
   /**
    * Basic "weak" test cases used in development
    */
@@ -184,8 +186,12 @@ class TestPrototype extends FunSuite with Checkers {
   }
 
   /**
-   * Sanity check
+   * Sanity checks
    */
+  test("optimizing A*(B+C) doesn't break") {
+    expect(planWithSum) {optimize(planWithSum)._2}
+  }
+  
   test("scalacheck: optimizing an optimized plan does not change it") {
     check((a: MatrixFormula) => optimize(a) == optimize(optimize(a)._2))
   }

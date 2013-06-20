@@ -78,10 +78,68 @@ object Prototype {
     toProductChains(mf, Nil).map(a => a.toIndexedSeq)
   }
 
-  def optimize(mf: MatrixFormula): (Double, MatrixFormula) = {
-    val optimizedChains = matrixFormulaToChains(mf)
-    (optimizedChains.map(chain => optimizeProductChain(chain)._1).sum,
-        optimizedChains.map(chain => optimizeProductChain(chain)._2).reduce((x,y) => Sum(x,y)))
-  }
+  def matrixFormulaOptimize(mf: MatrixFormula): (Long, MatrixFormula) = {
+		
+		def chainOrLast(chain: List[Literal], last: Option[(Long, MatrixFormula)]): (Long, MatrixFormula) = {
+			if (chain.isEmpty) last.get
+			else optimizeProductChain(chain.toIndexedSeq)
+		}
+		
+    def toProducts(mf: MatrixFormula): (List[Literal], Option[(Long, MatrixFormula)]) = {
+      mf match {
+        case element: Literal => (List(element), None)
+        case Sum(left, right) => {
+        	val (lastLChain, leftTemp) = toProducts(left)
+          val (lastRChain, rightTemp) = toProducts(right)
+          val (cost1, newLeft) = chainOrLast(lastLChain, leftTemp)
+          val (cost2, newRight) = chainOrLast(lastRChain, rightTemp)
+          (Nil, Some(cost1 + cost2, Sum(newLeft, newRight)))
+        }
+        case Product(leftp: Literal, rightp: Literal) => {
+          (List(leftp, rightp), None)
+        }
+        case Product(left: Product, right: Literal) => {
+          val (lastLChain, leftTemp) = toProducts(left)
+          if (lastLChain.isEmpty) {
+          		val (cost, newLeft) = leftTemp.get
+          		(Nil, Some(cost, Product(newLeft, right)))
+          } else {
+          	(lastLChain ++ List(right), leftTemp)
+          }
+        }
+        case Product(left: Literal, right: Product) => {
+          val (lastRChain, rightTemp) = toProducts(right)
+          if (lastRChain.isEmpty) {
+          		val (cost, newRight) = rightTemp.get
+          		(Nil, Some(cost, Product(left, newRight)))
+          } else {
+          	(left :: lastRChain, rightTemp)
+          }
+        }
+        case Product(left, right) => {
+          val (lastLChain, leftTemp) = toProducts(left)
+          val (lastRChain, rightTemp) = toProducts(right)
+          if (lastLChain.isEmpty) {
+          	val (cost1, newLeft) = leftTemp.get
+          	val (cost2, newRight) = chainOrLast(lastRChain, rightTemp)
+          	(Nil, Some(cost1 + cost2, Product(newLeft, newRight)))
+          } else {
+          	if (lastRChain.isEmpty) {
+          		val (cost1, newLeft) = optimizeProductChain(lastLChain.toIndexedSeq)
+          		val (cost2, newRight) = rightTemp.get
+          		(Nil, Some(cost1 + cost2, Product(newLeft, newRight)))
+          	} else {
+          		(lastLChain ++ lastRChain, None)
+          	}
+          }
+        }
+      }
+    }
+    val (lastChain, form) = toProducts(mf)
+    
+    chainOrLast(lastChain, form)
+  }  
+  
+  def optimize(mf: MatrixFormula): (Long, MatrixFormula) = matrixFormulaOptimize(mf)
 
 }
