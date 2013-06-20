@@ -4,8 +4,7 @@ import com.twitter.scalding.mathematics.NoClue
 import com.twitter.scalding.mathematics.SizeHint
 import com.twitter.scalding.mathematics.SparseHint
 import com.twitter.scalding.mathematics.FiniteHint
-import com.twitter.algebird.Monoid
-import com.twitter.algebird.Ring
+import com.twitter.algebird.{ Monoid, Ring }
 
 object Prototype {
 
@@ -21,7 +20,16 @@ object Prototype {
     def iterator: Iterator[(Int, Int, Double)] = toList().iterator
 
     override def toList(): List[(Int, Int, Double)] = {
-    	List()
+      (for {
+        keyL <- left.view
+        keyR <- right.view
+        if (keyL._2 == keyR._1)
+      } yield ((keyL._1, keyR._2) -> (keyL, keyR))).
+        groupBy(entry => entry._1).toSeq.sortBy(entry => entry._1). // get joined row-cols in order
+        map(joined => (joined._1._1, joined._1._2, joined._2. // construct resulting entry
+        map(els => ring.times(els._2._1._3, els._2._2._3)). // pairwise multiplication
+        reduce((el1, el2) => ring.plus(el1, el2)))). // sum products to the resulting element
+        toList
     }
   }
 
@@ -31,10 +39,10 @@ object Prototype {
     def iterator: Iterator[(Int, Int, Double)] = toList().iterator
 
     override def toList(): List[(Int, Int, Double)] = {
-		(left.view ++ right.view).groupBy(entry => (entry._1, entry._2)).toSeq.sortBy(entry => entry._1). // group entries
-			map(joined => if (joined._2.size == 1) joined._2.head // sum or leave
-				else (joined._2.head._1, joined._2.head._2, mon.plus(joined._2.head._3, joined._2.tail.head._3))).
-				toList
+      (left.view ++ right.view).groupBy(entry => (entry._1, entry._2)).toSeq.sortBy(entry => entry._1). // group entries
+        map(joined => if (joined._2.size == 1) joined._2.head // sum or leave
+        else (joined._2.head._1, joined._2.head._2, mon.plus(joined._2.head._3, joined._2.tail.head._3))).
+        toList
     }
   }
 
@@ -46,32 +54,32 @@ object Prototype {
 
   def optimizeProductChain(p: IndexedSeq[Literal]): (Long, Matrix) = {
 
-    val subchainCosts = HashMap.empty[(Int,Int), Long]
+    val subchainCosts = HashMap.empty[(Int, Int), Long]
 
-    val splitMarkers = HashMap.empty[(Int,Int), Int]
+    val splitMarkers = HashMap.empty[(Int, Int), Int]
 
     def computeCosts(p: IndexedSeq[Literal], i: Int, j: Int): Long = {
-      if (subchainCosts.contains((i,j))) subchainCosts((i,j))
-      if (i == j) subchainCosts.put((i,j), 0)
+      if (subchainCosts.contains((i, j))) subchainCosts((i, j))
+      if (i == j) subchainCosts.put((i, j), 0)
       else {
-        subchainCosts.put((i,j), Long.MaxValue)
+        subchainCosts.put((i, j), Long.MaxValue)
         for (k <- i to (j - 1)) {
           val cost = computeCosts(p, i, k) + computeCosts(p, k + 1, j) +
-          (p(i).sizeHint * (p(k).sizeHint * p(j).sizeHint)).total.get
-          if (cost < subchainCosts((i,j))) {
-            subchainCosts.put((i,j), cost)
-            splitMarkers.put((i,j), k)
+            (p(i).sizeHint * (p(k).sizeHint * p(j).sizeHint)).total.get
+          if (cost < subchainCosts((i, j))) {
+            subchainCosts.put((i, j), cost)
+            splitMarkers.put((i, j), k)
           }
         }
       }
 
-      subchainCosts((i,j))
+      subchainCosts((i, j))
     }
 
     def generatePlan(i: Int, j: Int): Matrix = {
       if (i == j) p(i)
       else {
-        val k = splitMarkers((i,j))
+        val k = splitMarkers((i, j))
         val left = generatePlan(i, k)
         val right = generatePlan(k + 1, j)
         Product(left, right)
@@ -107,7 +115,7 @@ object Prototype {
   def optimize(mf: Matrix): (Double, Matrix) = {
     val optimizedChains = matrixFormulaToChains(mf)
     (optimizedChains.map(chain => optimizeProductChain(chain)._1).sum,
-        optimizedChains.map(chain => optimizeProductChain(chain)._2).reduce((x,y) => Sum(x,y)))
+      optimizedChains.map(chain => optimizeProductChain(chain)._2).reduce((x, y) => Sum(x, y)))
   }
 
 }
