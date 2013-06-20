@@ -12,34 +12,43 @@ object Prototype {
     def +(that: Matrix): Matrix = Sum(this, that)
     def *(that: Matrix): Matrix = Product(this, that)
     val sizeHint: SizeHint = NoClue
+    lazy val optimizedSelf = optimize(this)._2    
   }
 
   case class Product(left: Matrix, right: Matrix)(implicit ring: Ring[Double]) extends Matrix {
     override val sizeHint = left.sizeHint * right.sizeHint
 
+    private var optimal: Boolean = false
+    
+    def setOptimal(): Unit = optimal = true
+    
     def iterator: Iterator[(Int, Int, Double)] = toList().iterator
 
     override def toList(): List[(Int, Int, Double)] = {
-      (for {
-        keyL <- left.view
-        keyR <- right.view
-        if (keyL._2 == keyR._1)
-      } yield ((keyL._1, keyR._2) -> (keyL, keyR))).
-        groupBy(entry => entry._1).toSeq.sortBy(entry => entry._1). // get joined row-cols in order
-        map(joined => (joined._1._1, joined._1._2, joined._2. // construct resulting entry
-        map(els => ring.times(els._2._1._3, els._2._2._3)). // pairwise multiplication
-        reduce((el1, el2) => ring.plus(el1, el2)))). // sum products to the resulting element
-        toList
+      if (optimal) {
+	      (for {
+	        keyL <- left.view
+	        keyR <- right.view
+	        if (keyL._2 == keyR._1)
+	      } yield ((keyL._1, keyR._2) -> (keyL, keyR))).
+	        groupBy(entry => entry._1).toSeq.sortBy(entry => entry._1). // get joined row-cols in order
+	        map(joined => (joined._1._1, joined._1._2, joined._2. // construct resulting entry
+	        map(els => ring.times(els._2._1._3, els._2._2._3)). // pairwise multiplication
+	        reduce((el1, el2) => ring.plus(el1, el2)))). // sum products to the resulting element
+	        toList
+      } else {
+        optimizedSelf.toList
+      }
     }
   }
 
   case class Sum(left: Matrix, right: Matrix)(implicit mon: Monoid[Double]) extends Matrix {
     override val sizeHint = left.sizeHint + right.sizeHint
-
+    
     def iterator: Iterator[(Int, Int, Double)] = toList().iterator
 
     override def toList(): List[(Int, Int, Double)] = {
-      (left.view ++ right.view).groupBy(entry => (entry._1, entry._2)).toSeq.sortBy(entry => entry._1). // group entries
+      (left.optimizedSelf.view ++ right.optimizedSelf.view).groupBy(entry => (entry._1, entry._2)).toSeq.sortBy(entry => entry._1). // group entries
         map(joined => if (joined._2.size == 1) joined._2.head // sum or leave
         else (joined._2.head._1, joined._2.head._2, mon.plus(joined._2.head._3, joined._2.tail.head._3))).
         toList
@@ -82,7 +91,9 @@ object Prototype {
         val k = splitMarkers((i, j))
         val left = generatePlan(i, k)
         val right = generatePlan(k + 1, j)
-        Product(left, right)
+        val result = Product(left, right)
+        result.setOptimal()
+        result
       }
 
     }
