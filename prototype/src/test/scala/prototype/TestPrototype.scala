@@ -121,6 +121,8 @@ class TestPrototype extends FunSuite with Checkers {
         Literal(FiniteHint(15, 5), globM), Literal(FiniteHint(5, 10), globM), Literal(FiniteHint(10, 20), globM),
         Literal(FiniteHint(20, 25), globM)), IndexedSeq(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 25), globM)))   
 
+  val planWithSum = Product(Literal(FiniteHint(30, 35), globM), Sum(Literal(FiniteHint(35, 25), globM), Literal(FiniteHint(35, 25), globM)))
+        
   /**
    * Basic "weak" test cases used in development
    */
@@ -142,40 +144,6 @@ class TestPrototype extends FunSuite with Checkers {
 
     expect((optimizedPlanCost, optimizedPlan)) {result}
   }
-
-  test("optimized matrix formula to a sequence") {
-    val result = matrixFormulaToChains(optimizedPlan).head
-    expect(productSequence.length) {result.length}
-    for {
-      i <- 0 to (productSequence.length - 1)
-    } yield expect(productSequence(i)) {result(i)}    
-  }
-
-  test("unoptimized matrix formula to a sequence") {
-    val result = matrixFormulaToChains(unoptimizedPlan).head
-    expect(productSequence.length) {result.length}
-    for {
-      i <- 0 to (productSequence.length - 1)
-    } yield expect(productSequence(i)) {result(i)}  
-  }
-
-  test("optimized sum matrix formula to a sequence") {
-    val result = matrixFormulaToChains(combinedOptimizedPlan)
-    expect(combinedSequence.length) {result.length}
-    for {
-      i <- 0 to (combinedSequence.length - 1)
-      j <- 0 to (combinedSequence(i).length - 1)
-    } yield expect(combinedSequence(i)(j)) {result(i)(j)}    
-  }
-
-  test("unoptimized sum matrix formula to a sequence") {
-    val result = matrixFormulaToChains(combinedUnoptimizedPlan)
-    expect(combinedSequence.length) {result.length}
-    for {
-      i <- 0 to (combinedSequence.length - 1)
-      j <- 0 to (combinedSequence(i).length - 1)
-    } yield expect(combinedSequence(i)(j)) {result(i)(j)}    
-  }
   
   test("optimizing an optimized plan") {
     expect((optimizedPlanCost, optimizedPlan)) {optimize(optimizedPlan)}
@@ -194,8 +162,12 @@ class TestPrototype extends FunSuite with Checkers {
   }
 
   /**
-   * Sanity check
+   * Sanity checks
    */
+  test("optimizing A*(B+C) doesn't break") {
+    expect(planWithSum) {optimize(planWithSum)._2}
+  }
+  
   test("scalacheck: optimizing an optimized plan does not change it") {
     check((a: Matrix) => optimize(a) == optimize(optimize(a)._2))
   }
