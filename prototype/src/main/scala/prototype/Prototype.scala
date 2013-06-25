@@ -15,12 +15,8 @@ object Prototype {
     lazy val optimizedSelf = optimize(this)._2
   }
 
-  case class Product(left: Matrix, right: Matrix)(implicit ring: Ring[Double]) extends Matrix {
+  case class Product(left: Matrix, right: Matrix, optimal: Boolean = false)(implicit ring: Ring[Double]) extends Matrix {
     override val sizeHint = left.sizeHint * right.sizeHint
-
-    private var optimal: Boolean = false
-
-    def setOptimal(): Unit = optimal = true
 
     def iterator: Iterator[(Int, Int, Double)] = toList().iterator
 
@@ -91,8 +87,7 @@ object Prototype {
         val k = splitMarkers((i, j))
         val left = generatePlan(i, k)
         val right = generatePlan(k + 1, j)
-        val result = Product(left, right)
-        result.setOptimal()
+        val result = Product(left, right, true)
         result
       }
 
@@ -120,39 +115,41 @@ object Prototype {
           val (cost2, newRight) = chainOrLast(lastRChain, rightTemp)
           (Nil, Some(cost1 + cost2, Sum(newLeft, newRight)))
         }
-        case Product(leftp: Literal, rightp: Literal) => {
+        case Product(leftp: Literal, rightp: Literal, _) => {
           (List(leftp, rightp), None)
         }
-        case Product(left: Product, right: Literal) => {
+        case Product(left: Product, right: Literal, _) => {
           val (lastLChain, leftTemp) = toProducts(left)
           if (lastLChain.isEmpty) {
             val (cost, newLeft) = leftTemp.get
-            (Nil, Some(cost, Product(newLeft, right)))
+            val interProduct = Product(newLeft, right, true)
+            (Nil, Some(cost, interProduct))
           } else {
             (lastLChain ++ List(right), leftTemp)
           }
         }
-        case Product(left: Literal, right: Product) => {
+        case Product(left: Literal, right: Product, _) => {
           val (lastRChain, rightTemp) = toProducts(right)
           if (lastRChain.isEmpty) {
             val (cost, newRight) = rightTemp.get
-            (Nil, Some(cost, Product(left, newRight)))
+            val interProduct = Product(left, newRight, true)
+            (Nil, Some(cost, interProduct))
           } else {
             (left :: lastRChain, rightTemp)
           }
         }
-        case Product(left, right) => {
+        case Product(left, right, _) => {
           val (lastLChain, leftTemp) = toProducts(left)
           val (lastRChain, rightTemp) = toProducts(right)
           if (lastLChain.isEmpty) {
             val (cost1, newLeft) = leftTemp.get
             val (cost2, newRight) = chainOrLast(lastRChain, rightTemp)
-            (Nil, Some(cost1 + cost2, Product(newLeft, newRight)))
+            (Nil, Some(cost1 + cost2, Product(newLeft, newRight, true)))
           } else {
             if (lastRChain.isEmpty) {
               val (cost1, newLeft) = optimizeProductChain(lastLChain.toIndexedSeq)
               val (cost2, newRight) = rightTemp.get
-              (Nil, Some(cost1 + cost2, Product(newLeft, newRight)))
+              (Nil, Some(cost1 + cost2, Product(newLeft, newRight, true)))
             } else {
               (lastLChain ++ lastRChain, None)
             }

@@ -87,9 +87,14 @@ class TestPrototype extends FunSuite with Checkers {
    * Values used in tests
    */
   // ((A1(A2 A3))((A4 A5) A6)
-  val optimizedPlan = Product( Product( Literal(FiniteHint(30, 35), globM),
-      Product( Literal(FiniteHint(35, 15), globM), Literal(FiniteHint(15, 5), globM))),
-         Product( Product( Literal(FiniteHint(5, 10), globM), Literal(FiniteHint(10, 20), globM)), Literal(FiniteHint(20, 25), globM)))
+  val optimizedPlan = Product(
+		  				Product(Literal(FiniteHint(30, 35), globM),
+		  						Product(Literal(FiniteHint(35, 15), globM),
+		  						    Literal(FiniteHint(15, 5), globM),true),true),
+		  						    Product(
+		  						        Product(Literal(FiniteHint(5, 10), globM),
+		  						        		Literal(FiniteHint(10, 20), globM), true),
+		  						        Literal(FiniteHint(20, 25), globM), true), true)
 
   val optimizedPlanCost = 1300 //15125.0
 
@@ -103,7 +108,7 @@ class TestPrototype extends FunSuite with Checkers {
           )
       ))
 
-  val simplePlan = Product(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 25), globM))
+  val simplePlan = Product(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 25), globM), true)
 
   val simplePlanCost = 750 //26250
 
@@ -121,7 +126,7 @@ class TestPrototype extends FunSuite with Checkers {
         Literal(FiniteHint(15, 5), globM), Literal(FiniteHint(5, 10), globM), Literal(FiniteHint(10, 20), globM),
         Literal(FiniteHint(20, 25), globM)), IndexedSeq(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 25), globM)))   
 
-  val planWithSum = Product(Literal(FiniteHint(30, 35), globM), Sum(Literal(FiniteHint(35, 25), globM), Literal(FiniteHint(35, 25), globM)))
+  val planWithSum = Product(Literal(FiniteHint(30, 35), globM), Sum(Literal(FiniteHint(35, 25), globM), Literal(FiniteHint(35, 25), globM)), true)
         
   /**
    * Basic "weak" test cases used in development
@@ -197,20 +202,20 @@ class TestPrototype extends FunSuite with Checkers {
           (if (lastRP.isDefined) List(lastRP.get) else Nil)
           (None, total)
         }
-        case Product(leftp: Literal, rightp: Literal) => {
+        case Product(leftp: Literal, rightp: Literal, _) => {
           (Some(Product(leftp, rightp)), Nil)
         }
-        case Product(left: Product, right: Literal) => {
+        case Product(left: Product, right: Literal, _) => {
           val (lastLP, leftR) = toProducts(left)
           if (lastLP.isDefined) (Some(Product(lastLP.get, right)), leftR)
           else (None, leftR)
         }
-        case Product(left: Literal, right: Product) => {
+        case Product(left: Literal, right: Product, _) => {
           val (lastRP, rightR) = toProducts(right)
           if (lastRP.isDefined) (Some(Product(left, lastRP.get)), rightR)
           else (None, rightR)
         }
-        case Product(left, right) => {
+        case Product(left, right, _) => {
           val (lastLP, leftR) = toProducts(left)
           val (lastRP, rightR) = toProducts(right)
           if (lastLP.isDefined && lastRP.isDefined) {
@@ -231,21 +236,21 @@ class TestPrototype extends FunSuite with Checkers {
      */
     def evaluateProduct(p: Product): Option[(Long, Matrix, Matrix)] = {
       p match {
-        case Product(left: Literal, right: Literal) => {
+        case Product(left: Literal, right: Literal, _) => {
           Some((left.sizeHint * (left.sizeHint * right.sizeHint)).total.get,
               left, right)
         }
-        case Product(left: Literal, right: Product) => {
+        case Product(left: Literal, right: Product, _) => {
           val (cost, pLeft, pRight) = evaluateProduct(right).get
           Some(cost + (left.sizeHint * (left.sizeHint * pRight.sizeHint)).total.get,
               left, pRight)
         }
-        case Product(left: Product, right: Literal) => {
+        case Product(left: Product, right: Literal, _) => {
           val (cost, pLeft, pRight) = evaluateProduct(left).get
           Some(cost + (pLeft.sizeHint * (pRight.sizeHint * right.sizeHint)).total.get,
               pLeft, right)
         }
-        case Product(left: Product, right: Product) => {
+        case Product(left: Product, right: Product, _) => {
           val (cost1, p1Left, p1Right) = evaluateProduct(left).get
           val (cost2, p2Left, p2Right) = evaluateProduct(right).get
           Some(cost1 + cost2 + (p1Left.sizeHint * (p1Right.sizeHint * p2Right.sizeHint)).total.get,
