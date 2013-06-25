@@ -12,30 +12,30 @@ object Prototype {
     def +(that: Matrix): Matrix = Sum(this, that)
     def *(that: Matrix): Matrix = Product(this, that)
     val sizeHint: SizeHint = NoClue
-    lazy val optimizedSelf = optimize(this)._2    
+    lazy val optimizedSelf = optimize(this)._2
   }
 
   case class Product(left: Matrix, right: Matrix)(implicit ring: Ring[Double]) extends Matrix {
     override val sizeHint = left.sizeHint * right.sizeHint
 
     private var optimal: Boolean = false
-    
+
     def setOptimal(): Unit = optimal = true
-    
+
     def iterator: Iterator[(Int, Int, Double)] = toList().iterator
 
     override def toList(): List[(Int, Int, Double)] = {
       if (optimal) {
-	      (for {
-	        keyL <- left.view
-	        keyR <- right.view
-	        if (keyL._2 == keyR._1)
-	      } yield ((keyL._1, keyR._2) -> (keyL, keyR))).
-	        groupBy(entry => entry._1).toSeq.sortBy(entry => entry._1). // get joined row-cols in order
-	        map(joined => (joined._1._1, joined._1._2, joined._2. // construct resulting entry
-	        map(els => ring.times(els._2._1._3, els._2._2._3)). // pairwise multiplication
-	        reduce((el1, el2) => ring.plus(el1, el2)))). // sum products to the resulting element
-	        toList
+        (for {
+          keyL <- left.view
+          keyR <- right.view
+          if (keyL._2 == keyR._1)
+        } yield ((keyL._1, keyR._2) -> (keyL, keyR))).
+          groupBy(entry => entry._1).toSeq.sortBy(entry => entry._1). // get joined row-cols in order
+          map(joined => (joined._1._1, joined._1._2, joined._2. // construct resulting entry
+            map(els => ring.times(els._2._1._3, els._2._2._3)). // pairwise multiplication
+            reduce((el1, el2) => ring.plus(el1, el2)))). // sum products to the resulting element
+          toList
       } else {
         optimizedSelf.toList
       }
@@ -44,7 +44,7 @@ object Prototype {
 
   case class Sum(left: Matrix, right: Matrix)(implicit mon: Monoid[Double]) extends Matrix {
     override val sizeHint = left.sizeHint + right.sizeHint
-    
+
     def iterator: Iterator[(Int, Int, Double)] = toList().iterator
 
     override def toList(): List[(Int, Int, Double)] = {
@@ -103,18 +103,18 @@ object Prototype {
     (best, generatePlan(0, p.length - 1))
   }
 
-  def matrixFormulaOptimize(mf: Matrix): (Long, Matrix) = {
-		
-		def chainOrLast(chain: List[Literal], last: Option[(Long, Matrix)]): (Long, Matrix) = {
-			if (chain.isEmpty) last.get
-			else optimizeProductChain(chain.toIndexedSeq)
-		}
-		
+  def optimize(mf: Matrix): (Long, Matrix) = {
+
+    def chainOrLast(chain: List[Literal], last: Option[(Long, Matrix)]): (Long, Matrix) = {
+      if (chain.isEmpty) last.get
+      else optimizeProductChain(chain.toIndexedSeq)
+    }
+
     def toProducts(mf: Matrix): (List[Literal], Option[(Long, Matrix)]) = {
       mf match {
         case element: Literal => (List(element), None)
         case Sum(left, right) => {
-        	val (lastLChain, leftTemp) = toProducts(left)
+          val (lastLChain, leftTemp) = toProducts(left)
           val (lastRChain, rightTemp) = toProducts(right)
           val (cost1, newLeft) = chainOrLast(lastLChain, leftTemp)
           val (cost2, newRight) = chainOrLast(lastRChain, rightTemp)
@@ -126,45 +126,43 @@ object Prototype {
         case Product(left: Product, right: Literal) => {
           val (lastLChain, leftTemp) = toProducts(left)
           if (lastLChain.isEmpty) {
-          		val (cost, newLeft) = leftTemp.get
-          		(Nil, Some(cost, Product(newLeft, right)))
+            val (cost, newLeft) = leftTemp.get
+            (Nil, Some(cost, Product(newLeft, right)))
           } else {
-          	(lastLChain ++ List(right), leftTemp)
+            (lastLChain ++ List(right), leftTemp)
           }
         }
         case Product(left: Literal, right: Product) => {
           val (lastRChain, rightTemp) = toProducts(right)
           if (lastRChain.isEmpty) {
-          		val (cost, newRight) = rightTemp.get
-          		(Nil, Some(cost, Product(left, newRight)))
+            val (cost, newRight) = rightTemp.get
+            (Nil, Some(cost, Product(left, newRight)))
           } else {
-          	(left :: lastRChain, rightTemp)
+            (left :: lastRChain, rightTemp)
           }
         }
         case Product(left, right) => {
           val (lastLChain, leftTemp) = toProducts(left)
           val (lastRChain, rightTemp) = toProducts(right)
           if (lastLChain.isEmpty) {
-          	val (cost1, newLeft) = leftTemp.get
-          	val (cost2, newRight) = chainOrLast(lastRChain, rightTemp)
-          	(Nil, Some(cost1 + cost2, Product(newLeft, newRight)))
+            val (cost1, newLeft) = leftTemp.get
+            val (cost2, newRight) = chainOrLast(lastRChain, rightTemp)
+            (Nil, Some(cost1 + cost2, Product(newLeft, newRight)))
           } else {
-          	if (lastRChain.isEmpty) {
-          		val (cost1, newLeft) = optimizeProductChain(lastLChain.toIndexedSeq)
-          		val (cost2, newRight) = rightTemp.get
-          		(Nil, Some(cost1 + cost2, Product(newLeft, newRight)))
-          	} else {
-          		(lastLChain ++ lastRChain, None)
-          	}
+            if (lastRChain.isEmpty) {
+              val (cost1, newLeft) = optimizeProductChain(lastLChain.toIndexedSeq)
+              val (cost2, newRight) = rightTemp.get
+              (Nil, Some(cost1 + cost2, Product(newLeft, newRight)))
+            } else {
+              (lastLChain ++ lastRChain, None)
+            }
           }
         }
       }
     }
     val (lastChain, form) = toProducts(mf)
-    
+
     chainOrLast(lastChain, form)
-  }  
-  
-  def optimize(mf: Matrix): (Long, Matrix) = matrixFormulaOptimize(mf)
+  }
 
 }
