@@ -55,16 +55,16 @@ class TestPrototype extends FunSuite with Checkers {
     }
   }
   
-  val genNode = for {
+  def genNode(depth: Int) = for {
     v <- arbitrary[Int]
     p <- Gen.choose(1, 10)
-    left <- genFormula
-    right <- genFormula
-  } yield if (v > 0) randomProduct(p) else Sum(left, right)
+    left <- genFormula(depth + 1)
+    right <- genFormula(depth + 1)
+  } yield if (depth > 5) randomProduct(p) else (if (v > 0) randomProduct(p) else Sum(left, right))
 
-  def genFormula: Gen[Matrix] = oneOf(genNode, genLeaf((0,0))._1)  
+  def genFormula(depth: Int): Gen[Matrix] = if (depth > 5) genLeaf((0,0))._1 else (oneOf(genNode(depth + 1), genLeaf((0,0))._1))  
   
-  implicit def arbT: Arbitrary[Matrix] = Arbitrary(genFormula)
+  implicit def arbT: Arbitrary[Matrix] = Arbitrary(genFormula(0))
 
   val genProdSeq = for {
     v <- Gen.choose(1, 10)

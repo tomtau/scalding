@@ -15,5 +15,5 @@ libraryDependencies ++= Seq(
   "org.scalacheck" %% "scalacheck" % "1.10.1" % "test",
   "org.scalatest" %% "scalatest" % "1.9.1" % "test",
   "com.twitter" %% "algebird-core" % "0.1.13",
-  "com.twitter" %% "scalding-core" % "0.8.5"
+  "com.twitter" %% "scalding-core" % "0.8.6"
 )
