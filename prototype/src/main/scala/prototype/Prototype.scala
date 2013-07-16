@@ -138,9 +138,6 @@ object Prototype {
           val (cost2, newRight) = chainOrLast(lastRChain, rightTemp)
           (List(Sum(newLeft, newRight)), lastCost1 + lastCost2 + cost1 + cost2, None)
         }
-        case Product(leftp: Sum, rightp: Sum, _) => {
-          (List(leftp, rightp), 0, None)
-        }
         // basic block A*B
         case Product(leftp: Literal, rightp: Literal, _) => {
           (List(leftp, rightp), 0, None)
