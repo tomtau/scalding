@@ -32,7 +32,7 @@ class TestPrototype extends FunSuite with Checkers {
   }
 
   val globM = matrix().sample.get
-  
+
 	def matrix(): Gen[List[(Int, Int, Double)]] = Gen.sized { size =>
 	  val side = scala.math.sqrt(size).asInstanceOf[Int]
 	  val g = arbitrary[Double]
@@ -108,6 +108,27 @@ class TestPrototype extends FunSuite with Checkers {
           )
       ))
 
+  // A1 * (A2 * (A3 * ( A4 + A4 ) * (A5 * (A6))))
+
+  val unoptimizedGlobalPlan = Product(Literal(FiniteHint(30, 35), globM), 
+      Product(Literal(FiniteHint(35, 15), globM),
+          Product(Literal(FiniteHint(15, 5), globM),
+              Product(Sum(Literal(FiniteHint(5, 10), globM), Literal(FiniteHint(5, 10), globM)),
+                  Product(Literal(FiniteHint(10, 20), globM), Literal(FiniteHint(20, 25), globM))
+              )
+          )
+      ))      
+
+  // ((A1(A2 A3))(((A4 + A4) A5) A6)
+  val optimizedGlobalPlan = Product(
+		  				Product(Literal(FiniteHint(30, 35), globM),
+		  						Product(Literal(FiniteHint(35, 15), globM),
+		  						    Literal(FiniteHint(15, 5), globM),true),true),
+		  						    Product(
+		  						        Product(Sum(Literal(FiniteHint(5, 10), globM),Literal(FiniteHint(5, 10), globM)),
+		  						        		Literal(FiniteHint(10, 20), globM), true),
+		  						        Literal(FiniteHint(20, 25), globM), true), true)      
+      
   val simplePlan = Product(Literal(FiniteHint(30, 35), globM), Literal(FiniteHint(35, 25), globM), true)
 
   val simplePlanCost = 750 //26250
@@ -166,6 +187,14 @@ class TestPrototype extends FunSuite with Checkers {
     expect((combinedOptimizedPlanCost, combinedOptimizedPlan)) {optimize(combinedUnoptimizedPlan)}
   }
 
+  test("optimizing an unoptimized global plan") {
+    expect(optimizedGlobalPlan) {optimize(unoptimizedGlobalPlan)._2}
+  }  
+
+  test("optimizing an optimized global plan") {
+    expect(optimizedGlobalPlan) {optimize(optimizedGlobalPlan)._2}
+  }    
+  
   /**
    * Sanity checks
    */
@@ -234,7 +263,7 @@ class TestPrototype extends FunSuite with Checkers {
      * as the dynamic programming procedure computes cost
      * (optimizeProductChain - computeCosts in Prototype)
      */
-    def evaluateProduct(p: Product): Option[(Long, Matrix, Matrix)] = {
+    def evaluateProduct(p: Matrix): Option[(Long, Matrix, Matrix)] = {
       p match {
         case Product(left: Literal, right: Literal, _) => {
           Some((left.sizeHint * (left.sizeHint * right.sizeHint)).total.get,
@@ -250,7 +279,7 @@ class TestPrototype extends FunSuite with Checkers {
           Some(cost + (pLeft.sizeHint * (pRight.sizeHint * right.sizeHint)).total.get,
               pLeft, right)
         }
-        case Product(left: Product, right: Product, _) => {
+        case Product(left: Matrix, right: Matrix, _) => {
           val (cost1, p1Left, p1Right) = evaluateProduct(left).get
           val (cost2, p2Left, p2Right) = evaluateProduct(right).get
           Some(cost1 + cost2 + (p1Left.sizeHint * (p1Right.sizeHint * p2Right.sizeHint)).total.get,
