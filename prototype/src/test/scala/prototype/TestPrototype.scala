@@ -326,6 +326,10 @@ class TestPrototype extends FunSuite with Checkers {
     check((a: Matrix) => optimize(a)._1 <= evaluate(a))
   }
 
+  test("scalacheck: new optimization return the same thing as the old one") {
+    check((a: Matrix) => optimize(a) == optimizeOld(a))
+  }  
+  
   test("optimizing a strange random chain (that had a better cost)") {
     val chain = Vector(Literal(SparseHint(0.36482271552085876,940,325), globM), Literal(SparseHint(0.9494419097900391,325,545), globM), Literal(SparseHint(0.41427478194236755,545,206), globM), Literal(SparseHint(0.0032255554106086493,206,587), globM))
     val randomPlan = generateRandomPlan(0, chain.length - 1, chain)

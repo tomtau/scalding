@@ -112,7 +112,38 @@ object Prototype {
    * One example:
    * A*B*C*(D+E)*(F*G) => "basic blocks" are ABC, D, E, and FG
    */
+  
   def optimize(mf: Matrix): (Long, Matrix) = {
+
+    /**
+     * Recursive function - returns a flatten product chain so far and optimizes chains under sums
+     */
+    def optimizeBasicBlocks(mf: Matrix): (List[Matrix], Long) = {
+      mf match {
+        // basic block of one matrix
+        case element: Literal => (List(element), 0)
+        // two potential basic blocks connected by a sum
+        case Sum(left, right) => {
+          val (lastLChain, lastCost1) = optimizeBasicBlocks(left)
+          val (lastRChain, lastCost2) = optimizeBasicBlocks(right)
+          val (cost1, newLeft) = optimizeProductChain(lastLChain.toIndexedSeq)
+          val (cost2, newRight) = optimizeProductChain(lastRChain.toIndexedSeq)
+          (List(Sum(newLeft, newRight)), lastCost1 + lastCost2 + cost1 + cost2)
+        }
+        // chain (...something...)*(...something...)
+        case Product(left, right, _) => {
+          val (lastLChain, lastCost1) = optimizeBasicBlocks(left)
+          val (lastRChain, lastCost2) = optimizeBasicBlocks(right)
+          (lastLChain ++ lastRChain, lastCost1 + lastCost2)
+        }
+      }
+    }
+    val (lastChain, lastCost) = optimizeBasicBlocks(mf)
+    val (potentialCost, finalResult) =  optimizeProductChain(lastChain.toIndexedSeq)
+    (lastCost + potentialCost, finalResult) 
+  }  
+  
+  def optimizeOld(mf: Matrix): (Long, Matrix) = {
 
     /**
      * Helper function that either returns an optimized product chain
